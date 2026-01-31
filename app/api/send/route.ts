@@ -85,10 +85,18 @@ export async function POST(request: Request) {
             console.log('SMTP connection verified successfully');
         } catch (verifyError: any) {
             console.error('SMTP Verify Error:', verifyError);
-            console.error('Error code:', verifyError.code);
-            console.error('Error command:', verifyError.command);
+
+            let errorMessage = `SMTP Connection Failed: ${verifyError.message}`;
+
+            // Handle specific DNS/Network errors
+            if (verifyError.code === 'ENOTFOUND' || verifyError.message?.includes('getaddrinfo')) {
+                errorMessage = `SMTP Connection Failed: Could not resolve hostname '${smtpConfig.host}'. Please check your SMTP host settings.`;
+            } else if (verifyError.code === 'EBUSY') {
+                errorMessage = `SMTP Connection Failed: System busy or unable to resolve hostname '${smtpConfig.host}'.`;
+            }
+
             return NextResponse.json(
-                { success: false, message: `SMTP Connection Failed: ${verifyError.message}` },
+                { success: false, message: errorMessage },
                 { status: 500 }
             );
         }

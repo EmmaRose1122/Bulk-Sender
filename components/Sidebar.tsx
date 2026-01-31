@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, ListTodo, BarChart3, Users, Globe, Mail } from 'lucide-react';
+import { MessageSquare, ListTodo, BarChart3, Users, Globe, Mail, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function Sidebar() {
@@ -64,6 +64,20 @@ export function Sidebar() {
                             Templates
                         </Link>
                     </li>
+                    <li>
+                        <Link
+                            href="/settings"
+                            className={cn(
+                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
+                                pathname === '/settings'
+                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
+                                    : 'hover:bg-slate-800/50 hover:text-white'
+                            )}
+                        >
+                            <Settings className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/settings' ? "text-white" : "text-indigo-400")} />
+                            SMTP Settings
+                        </Link>
+                    </li>
                 </ul>
 
                 <div className="mt-10 px-6 text-[10px] font-bold uppercase text-slate-500 tracking-[0.2em]">
@@ -118,9 +132,9 @@ export function Sidebar() {
                 <div className="bg-slate-800/30 rounded-2xl p-4 border border-slate-700/30">
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Plan Usage</p>
                     <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                        <div className="h-full w-[65%] gradient-primary rounded-full" />
+                        <div className="h-full w-[0%] gradient-primary rounded-full" />
                     </div>
-                    <p className="text-xs text-slate-400 mt-3 font-medium">650 / 1000 emails</p>
+                    <p className="text-xs text-slate-400 mt-3 font-medium">0 / 1000 emails</p>
                 </div>
             </div>
         </div>
