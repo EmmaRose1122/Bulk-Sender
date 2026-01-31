@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
-import { Upload, Play, Pause, CheckCircle, XCircle, Clock, Mail, AlertTriangle, Server, Layers, FileText, Activity, Users, ListTodo, MessageSquare, BarChart3, ShieldCheck, ShieldAlert, Shield, Eye } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, Search, Layout, FileCode, CheckCircle2, AlertCircle, ShieldCheck, Shield, MessageSquare, ListTodo, Users, ShieldAlert, BarChart3, Settings, Play, Square, Pause, ChevronDown, Activity, Zap, CheckCircle, XCircle, Clock, Mail } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { EmailLog, AccountProfile, EmailTemplate } from '../types/index';
@@ -184,7 +184,7 @@ export default function CampaignPage() {
   const processBatch = async (startIndex: number) => {
     const currentLogs = logsRef.current;
 
-    if (stopRef.current || startIndex >= currentLogs.length) {
+    const finalizeCampaign = (isStopped: boolean) => {
       setIsSending(false);
       addCampaignToHistory({
         id: crypto.randomUUID(),
@@ -193,10 +193,14 @@ export default function CampaignPage() {
         total: progress.total,
         sent: progress.sent,
         failed: progress.failed,
-        status: stopRef.current ? 'paused' : 'completed',
+        status: isStopped ? 'paused' : 'completed',
         logs: currentLogs,
       });
-      toast.success(stopRef.current ? 'Campaign stopped' : 'Campaign finished!');
+      toast.success(isStopped ? 'Campaign stopped' : 'Campaign finished!');
+    };
+
+    if (stopRef.current || startIndex >= currentLogs.length) {
+      finalizeCampaign(stopRef.current);
       return;
     }
 
@@ -241,12 +245,20 @@ export default function CampaignPage() {
       let subject = currentTemplate.subject;
       let body = currentTemplate.body;
 
-      Object.keys(rowData).forEach(key => {
-        const regex = new RegExp(`{{${key}}}`, 'g');
-        const value = rowData[key];
-        subject = subject.replace(regex, value);
-        body = body.replace(regex, value);
-      });
+      // Enhanced Variable Replacement with Fallbacks
+      const replaceVariables = (text: string, data: any) => {
+        return text.replace(/\{\{([^}]+)\}\}/g, (match, p1) => {
+          const [key, fallback] = p1.split('|').map((s: string) => s.trim());
+          // Try to find the key in CSV data (case-insensitive)
+          const csvKey = Object.keys(data).find(k => k.toLowerCase() === key.toLowerCase());
+          const value = csvKey ? data[csvKey] : undefined;
+
+          return (value !== undefined && value !== '') ? value : (fallback || match);
+        });
+      };
+
+      subject = replaceVariables(subject, rowData);
+      body = replaceVariables(body, rowData);
 
       subject = resolveSpintax(subject);
       body = resolveSpintax(body) + generateFingerprint();
@@ -296,12 +308,13 @@ export default function CampaignPage() {
       current: endIndex,
     }));
 
-    if (endIndex < currentLogs.length) {
-      const jitteredWait = waitTime * (0.8 + Math.random() * 0.4);
+    if (endIndex < currentLogs.length && !stopRef.current) {
+      // Randomized Jitter (+- 20%)
+      const jitter = (Math.random() * 0.4) + 0.8; // Range: 0.8 to 1.2
+      const jitteredWait = waitTime * jitter;
       setTimeout(() => processBatch(endIndex), jitteredWait * 1000);
-    } else {
-      setIsSending(false);
-      toast.success('Campaign finished!');
+    } else if (!stopRef.current) {
+      finalizeCampaign(false);
     }
   };
 
@@ -446,6 +459,18 @@ export default function CampaignPage() {
                   </select>
                   <div className="absolute bottom-4 right-4 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-700 text-[10px] font-bold text-slate-400 uppercase">
                     {selectedTemplateIds.length} Selected
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-700/50 rounded-md px-2 py-1 bg-slate-800/30">Available Tokens:</span>
+                  {['name', 'business_name', 'website'].map(token => (
+                    <code key={token} className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/20">
+                      {"{{"}{token}{"|fallback}"}
+                    </code>
+                  ))}
+                  <div className="w-full flex items-center gap-2 mt-2 px-3 py-2 bg-indigo-500/5 border border-indigo-500/10 rounded-lg">
+                    <AlertCircle className="h-3 w-3 text-indigo-400" />
+                    <p className="text-[10px] text-slate-400 font-medium italic">Case-insensitive. Use | for optional fallbacks.</p>
                   </div>
                 </div>
               </div>

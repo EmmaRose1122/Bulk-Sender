@@ -37,7 +37,7 @@ export default function AnalyticsPage() {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {campaignHistory.map((campaign) => (
+                    {campaignHistory.map((campaign: any) => (
                         <Card key={campaign.id} className="glass border-none shadow-xl overflow-hidden group">
                             <CardHeader
                                 className="p-8 cursor-pointer hover:bg-slate-50/50 transition-all duration-300"

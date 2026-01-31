@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect } from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { SmtpConfig, EmailTemplate, Campaign, AccountProfile } from '@/types';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { SmtpConfig, EmailTemplate, Campaign, AccountProfile } from '../types/index';
 
 interface AppContextType {
     smtpConfigs: SmtpConfig[];
@@ -38,7 +38,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
 
     // Ensure defaultSmtpId is valid
     useEffect(() => {
-        if (defaultSmtpId && !smtpConfigs.find(c => c.id === defaultSmtpId)) {
+        if (defaultSmtpId && !smtpConfigs.find((c: SmtpConfig) => c.id === defaultSmtpId)) {
             setDefaultSmtpId(null);
         }
     }, [smtpConfigs, defaultSmtpId, setDefaultSmtpId]);
@@ -51,14 +51,14 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     };
 
     const removeSmtpConfig = (id: string) => {
-        setSmtpConfigs(smtpConfigs.filter((c) => c.id !== id));
+        setSmtpConfigs(smtpConfigs.filter((c: SmtpConfig) => c.id !== id));
         if (defaultSmtpId === id) {
             setDefaultSmtpId(null);
         }
     };
 
     const updateSmtpConfig = (config: SmtpConfig) => {
-        setSmtpConfigs(smtpConfigs.map((c) => (c.id === config.id ? config : c)));
+        setSmtpConfigs(smtpConfigs.map((c: SmtpConfig) => (c.id === config.id ? config : c)));
     };
 
     const addTemplate = (template: EmailTemplate) => {
@@ -66,15 +66,15 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     };
 
     const removeTemplate = (id: string) => {
-        setTemplates(templates.filter((t) => t.id !== id));
+        setTemplates(templates.filter((t: EmailTemplate) => t.id !== id));
     };
 
     const updateTemplate = (template: EmailTemplate) => {
-        setTemplates(templates.map((t) => (t.id === template.id ? template : t)));
+        setTemplates(templates.map((t: EmailTemplate) => (t.id === template.id ? template : t)));
     };
 
     const addCampaignToHistory = (campaign: Campaign) => {
-        setCampaignHistory([campaign, ...campaignHistory]);
+        setCampaignHistory(prev => [campaign, ...prev]);
     };
 
     const clearHistory = () => {
@@ -82,15 +82,15 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     };
 
     const addAccount = (account: AccountProfile) => {
-        setAccounts(prev => [...prev, account]);
+        setAccounts((prev: AccountProfile[]) => [...prev, account]);
     };
 
     const removeAccount = (id: string) => {
-        setAccounts(prev => prev.filter((a) => a.id !== id));
+        setAccounts((prev: AccountProfile[]) => prev.filter((a: AccountProfile) => a.id !== id));
     };
 
     const updateAccount = (account: AccountProfile) => {
-        setAccounts(prev => prev.map((a) => (a.id === account.id ? account : a)));
+        setAccounts((prev: AccountProfile[]) => prev.map((a: AccountProfile) => (a.id === account.id ? account : a)));
     };
 
     return (

@@ -90,7 +90,13 @@ export default function TemplatesPage() {
                             </div>
                             <div>
                                 <h2 className="text-2xl font-black text-white tracking-tight">{editingId ? 'Modify Strategy' : 'Construct Blueprint'}</h2>
-                                <p className="text-slate-400 text-xs font-medium">Use {'{{variable}}'} for data injection.</p>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    {['name', 'business_name', 'website'].map(token => (
+                                        <code key={token} className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                                            {"{{"}{token}{"|fallback}"}
+                                        </code>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
