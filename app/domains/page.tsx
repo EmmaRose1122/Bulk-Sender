@@ -186,6 +186,53 @@ export default function DomainsPage() {
                     ))}
                 </div>
             )}
+            {/* Deliverability Knowledge Base */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+                <Card className="border-none shadow-xl bg-slate-900 text-white p-8 rounded-[2rem] overflow-hidden relative">
+                    <div className="absolute top-0 right-0 p-10 opacity-10">
+                        <ShieldCheck className="h-40 w-40" />
+                    </div>
+                    <div className="relative z-10 space-y-4">
+                        <h3 className="text-2xl font-black tracking-tight">Anti-Spam Knowledge Base</h3>
+                        <p className="text-slate-400 font-medium">Follow these rules to ensure your emails bypass the "Junk" folder.</p>
+
+                        <div className="space-y-4 mt-6">
+                            <div className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+                                <ShieldCheck className="h-6 w-6 text-emerald-400 shrink-0" />
+                                <div>
+                                    <p className="font-bold text-sm">Authentication is Mandatory</p>
+                                    <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-widest leading-relaxed">Ensure SPF, DKIM, and DMARC are all "Verified". Without these, Gmail and Outlook will almost certainly flag your SMTP as spam.</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+                                <RefreshCw className="h-6 w-6 text-indigo-400 shrink-0" />
+                                <div>
+                                    <p className="font-bold text-sm">Warm-up Your Domain</p>
+                                    <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-widest leading-relaxed">Don't send 1,000 emails on day one. Start with 50, then 100, then 200. Rapid spikes in volume trigger "Suspicious Activity" alerts.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="border-none shadow-xl border border-slate-100 p-8 rounded-[2rem] bg-indigo-50/50">
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight mb-6">Critical Record Hints</h3>
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">SPF (Sender Policy Framework)</Label>
+                            <p className="text-xs text-slate-600 leading-relaxed font-medium">A list of IP addresses authorized to send on behalf of your domain. You should update your existing SPF record to include your SMTP provider.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">DKIM (DomainKeys Identified Mail)</Label>
+                            <p className="text-xs text-slate-600 leading-relaxed font-medium">A digital signature added to your email headers. It proves that the email wasn't tampered with during transit.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">DMARC (Domain-based Message Authentication)</Label>
+                            <p className="text-xs text-slate-600 leading-relaxed font-medium">Tells receiving servers what to do if SPF or DKIM fails. Setting this to "p=quarantine" or "p=reject" significantly boosts trust.</p>
+                        </div>
+                    </div>
+                </Card>
+            </div>
         </div>
     );
 }

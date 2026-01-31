@@ -41,7 +41,7 @@ const StatCard = ({ title, value, icon, description, trend }: StatCardProps) => 
 );
 
 export default function CampaignPage() {
-  const { accounts, templates, addCampaignToHistory, smtpConfigs, domains } = useAppContext();
+  const { accounts, templates, addCampaignToHistory, smtpConfigs, domains, updateCampaignStatus } = useAppContext();
 
   // Campaign Configuration
   const [selectedSmtpId, setSelectedSmtpId] = useState<string>('');
@@ -97,6 +97,9 @@ export default function CampaignPage() {
         try {
           const res = await fetch('/api/campaign-status');
           const trackingData = await res.json();
+
+          // Update context so analytics/history stays updated
+          updateCampaignStatus(trackingData);
 
           setLogs(prev => prev.map(log => {
             if (trackingData[log.id] && !log.opened) {
@@ -573,7 +576,24 @@ export default function CampaignPage() {
                           {log.opened && <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200 flex items-center gap-1"><Eye className="h-3 w-3" /> Visualized</span>}
                         </div>
                       </td>
-                      <td className="p-6"><span className="text-[10px] font-bold text-slate-400 tabular-nums">{log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : '---'}</span></td>
+                      <td className="p-6">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3 w-3 text-slate-400" />
+                            <span className="text-[10px] font-bold text-slate-600 tabular-nums">
+                              {log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : '---'}
+                            </span>
+                          </div>
+                          {log.opened && (
+                            <div className="flex items-center gap-1.5">
+                              <Eye className="h-3 w-3 text-indigo-500" />
+                              <span className="text-[10px] font-black text-indigo-600 tabular-nums uppercase">
+                                {new Date(log.openedAt || 0).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-6">
                         <span className="text-[10px] font-medium text-slate-500 italic truncate block max-w-xs">
                           {log.location ? (

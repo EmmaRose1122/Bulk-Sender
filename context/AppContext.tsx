@@ -19,6 +19,7 @@ interface AppContextType {
 
     campaignHistory: Campaign[];
     addCampaignToHistory: (campaign: Campaign) => void;
+    updateCampaignStatus: (trackingData: any) => void;
     clearHistory: () => void;
 
     accounts: AccountProfile[];
@@ -92,6 +93,33 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         setCampaignHistory(prev => [campaign, ...prev]);
     };
 
+    const updateCampaignStatus = (trackingData: any) => {
+        setCampaignHistory((current: Campaign[]) => {
+            return current.map(campaign => {
+                if (!campaign.logs) return campaign;
+
+                let hasChanges = false;
+                const updatedLogs = campaign.logs.map(log => {
+                    const serverData = trackingData[log.id];
+                    if (serverData && (!log.opened || !log.location)) {
+                        hasChanges = true;
+                        return {
+                            ...log,
+                            opened: true,
+                            openedAt: serverData.openedAt || log.openedAt,
+                            location: serverData.locationString || log.location,
+                            ip: serverData.ip || log.ip,
+                            userAgent: serverData.userAgent || log.userAgent
+                        };
+                    }
+                    return log;
+                });
+
+                return hasChanges ? { ...campaign, logs: updatedLogs } : campaign;
+            });
+        });
+    };
+
     const clearHistory = () => {
         setCampaignHistory([]);
     };
@@ -147,6 +175,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
                 updateTemplate,
                 campaignHistory,
                 addCampaignToHistory,
+                updateCampaignStatus,
                 clearHistory,
                 accounts,
                 addAccount,

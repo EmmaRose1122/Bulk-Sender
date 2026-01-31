@@ -59,7 +59,7 @@ const StatCard = ({ icon: Icon, value, label, color }: { icon: any, value: numbe
 );
 
 export default function AnalyticsPage() {
-    const { campaignHistory, clearHistory, accounts } = useAppContext();
+    const { campaignHistory, clearHistory, accounts, updateCampaignStatus } = useAppContext();
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [syncing, setSyncing] = useState(false);
     const [stats, setStats] = useState({
@@ -76,8 +76,8 @@ export default function AnalyticsPage() {
             const res = await fetch('/api/reports/sync');
             const { tracking } = await res.json();
 
-            // In a real implementation, we would merge this data back into the campaignHistory in context
-            // For now, we calculate aggregate stats for the dashboard View
+            // Update global context with fresh tracking data
+            updateCampaignStatus(tracking);
             let totalOpens = 0;
             let totalClicks = 0;
             let totalUnsubs = 0;
@@ -186,27 +186,57 @@ export default function AnalyticsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {campaignHistory.flatMap(c => c.logs || []).slice(0, 10).map((log, i) => (
-                                <tr key={log.id || i} className="hover:bg-slate-50 transition-colors">
-                                    <td className="p-4 font-bold text-slate-700">{log.email}</td>
-                                    <td className="p-4">
-                                        <span className={cn(
-                                            "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest",
-                                            log.status === 'sent' ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                                        )}>
-                                            {log.status}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 flex gap-2">
-                                        {log.opened && <div className="h-6 w-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center"><Eye className="h-3 w-3" /></div>}
-                                        {/* Since we don't have clicked in Log type yet locally, we rely on sync stats or assume future sync */}
-                                        {/* Ideally we would map the synced data to this row view for live updates */}
-                                    </td>
-                                    <td className="p-4 text-xs font-mono text-slate-400">
-                                        {log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : '-'}
-                                    </td>
-                                </tr>
-                            ))}
+                            {campaignHistory
+                                .flatMap(c => c.logs || [])
+                                .sort((a, b) => (b.openedAt || b.sentAt || 0) - (a.openedAt || a.sentAt || 0))
+                                .map((log, i) => (
+                                    <tr key={log.id || i} className="hover:bg-slate-50 transition-colors">
+                                        <td className="p-4 font-bold text-slate-700">
+                                            {log.email}
+                                            {log.location && (
+                                                <span className="block text-[10px] text-emerald-600 flex items-center gap-1 font-bold italic">
+                                                    <Globe className="h-2 w-2" /> {log.location}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className={cn(
+                                                    "w-fit px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter border",
+                                                    log.status === 'sent' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200"
+                                                )}>
+                                                    {log.status === 'sent' ? 'Delivered' : 'Failed'}
+                                                </span>
+                                                {log.opened ? (
+                                                    <span className="w-fit px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                                                        <Eye className="h-2.5 w-2.5" /> Opened
+                                                    </span>
+                                                ) : (
+                                                    <span className="w-fit px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter bg-slate-50 text-slate-400 border border-slate-200">
+                                                        Not Opened
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            {log.opened ? (
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[10px] font-bold text-slate-900 flex items-center gap-1 uppercase">
+                                                        <Clock className="h-3 w-3 text-indigo-500" /> {new Date(log.openedAt || 0).toLocaleTimeString()}
+                                                    </p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        {new Date(log.openedAt || 0).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[10px] font-black text-slate-200 uppercase tracking-widest">Awaiting...</span>
+                                            )}
+                                        </td>
+                                        <td className="p-4 text-[10px] font-bold text-slate-400 tabular-nums">
+                                            {log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : '-'}
+                                        </td>
+                                    </tr>
+                                ))}
                             {campaignHistory.length === 0 && (
                                 <tr>
                                     <td colSpan={4} className="p-8 text-center text-slate-400 text-sm italic">No data available. Run a campaign to populate intelligence.</td>

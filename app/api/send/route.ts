@@ -114,12 +114,27 @@ export async function POST(request: Request) {
             }
         }
 
-        console.log('Sending email...');
+        // Construct advanced headers to bypass spam filters
+        const senderEmail = smtpConfig.fromEmail || smtpConfig.user;
+        const trackingUrl = body.baseUrl || request.headers.get('origin') || 'http://localhost:3000';
+        const unsubscribeUrl = `${trackingUrl}/api/unsubscribe?id=${trackingId || 'general'}`;
+
+        const headers: any = {
+            'Precedence': 'bulk',
+            'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:${senderEmail}?subject=unsubscribe>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            'X-Mailer': 'BulkSender Intelligence 1.0',
+            'List-ID': `<${senderEmail.split('@')[1]}>`,
+            'X-Report-Abuse': `Please report abuse to abuse@${senderEmail.split('@')[1]}`
+        };
+
+        console.log('Sending email with anti-spam headers...');
         const info = await transporter.sendMail({
-            from: `"${smtpConfig.fromName || smtpConfig.user}" <${smtpConfig.fromEmail || smtpConfig.user}>`,
+            from: `"${smtpConfig.fromName || smtpConfig.user}" <${senderEmail}>`,
             to,
             subject,
             html: finalHtml,
+            headers
         });
 
         console.log('Email sent successfully:', info.messageId);

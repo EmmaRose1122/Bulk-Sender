@@ -56,12 +56,25 @@ export function analyzeDeliverability(subject: string, body: string): Deliverabi
         suggestions.push('Avoid using ALL CAPS in the subject.');
     }
 
-    // 5. Check for Spintax Usage (Good for deliverability)
+    // 5. Check for Unsubscribe Link/Word in body (Critical for bulk)
+    if (!lowerBody.includes('unsubscribe')) {
+        score -= 25;
+        suggestions.push('Missing "Unsubscribe" link in the email body. This is a major spam trigger.');
+    }
+
+    // 6. Check for Spintax Usage (Good for deliverability)
     if (!subject.includes('{') && !body.includes('{')) {
         score -= 10;
         suggestions.push('Use Spintax to randomize content and reduce spam risk.');
     } else {
         score += 5; // Bonus for using spintax
+    }
+
+    // 7. Check Image to Text ratio (Simplified: look for many imgs and little text)
+    const imgCount = (body.match(/<img/g) || []).length;
+    if (imgCount > 2 && body.length < 500) {
+        score -= 15;
+        suggestions.push('High image-to-text ratio detected. Add more text content.');
     }
 
     // Normalize score
