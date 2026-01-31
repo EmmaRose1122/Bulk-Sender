@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
-import { Trash2, Plus, Eye, Save, Search, Layout, FileCode, CheckCircle2, AlertCircle, ShieldCheck, Shield, MessageSquare, ListTodo, Users, ShieldAlert, BarChart3, Settings, Play, Square, Pause, ChevronDown, Activity, Zap, CheckCircle, XCircle, Clock, Mail } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, Search, Layout, FileCode, CheckCircle2, AlertCircle, ShieldCheck, Shield, MessageSquare, ListTodo, Users, ShieldAlert, BarChart3, Settings, Play, Square, Pause, ChevronDown, Activity, Zap, CheckCircle, XCircle, Clock, Mail, Globe } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { EmailLog, AccountProfile, EmailTemplate, Domain } from '../types/index';
@@ -103,7 +103,8 @@ export default function CampaignPage() {
               return {
                 ...log,
                 opened: true,
-                openedAt: trackingData[log.id].openedAt
+                openedAt: trackingData[log.id].openedAt,
+                location: trackingData[log.id].locationString
               };
             }
             return log;
@@ -573,7 +574,17 @@ export default function CampaignPage() {
                         </div>
                       </td>
                       <td className="p-6"><span className="text-[10px] font-bold text-slate-400 tabular-nums">{log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : '---'}</span></td>
-                      <td className="p-6"><span className="text-[10px] font-medium text-slate-500 italic truncate block max-w-xs">{log.error || 'Normal Placement'}</span></td>
+                      <td className="p-6">
+                        <span className="text-[10px] font-medium text-slate-500 italic truncate block max-w-xs">
+                          {log.location ? (
+                            <span className="text-emerald-600 font-bold not-italic flex items-center gap-1">
+                              <Globe className="h-3 w-3" /> {log.location}
+                            </span>
+                          ) : (
+                            log.error || 'Normal Placement'
+                          )}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                   {logs.length === 0 && (

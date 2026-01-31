@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import geoip from 'geoip-lite';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const TRACKING_FILE = path.join(DATA_DIR, 'tracking.json');
@@ -23,15 +24,24 @@ export async function GET(request: Request) {
         try {
             const data = JSON.parse(fs.readFileSync(TRACKING_FILE, 'utf8'));
             const existing = data[id] || {};
+
+            const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+            const cleanIp = ip.split(',')[0].trim();
+            const geo = geoip.lookup(cleanIp);
+            const location = geo ? `${geo.city || ''}, ${geo.country || ''}`.replace(/^, /, '') : 'Unknown Location';
+
             data[id] = {
                 ...existing,
                 opened: true,
-                openedAt: Date.now(),
-                ip: request.headers.get('x-forwarded-for') || 'unknown',
-                userAgent: request.headers.get('user-agent') || 'unknown'
+                openedAt: existing.openedAt || Date.now(),
+                lastOpenedAt: Date.now(),
+                ip: cleanIp,
+                userAgent: request.headers.get('user-agent') || 'unknown',
+                location: geo ? { city: geo.city, country: geo.country, region: geo.region } : null,
+                locationString: location
             };
             fs.writeFileSync(TRACKING_FILE, JSON.stringify(data, null, 2));
-            console.log(`Email opened: ${id}`);
+            console.log(`Email opened: ${id} from ${location} (${cleanIp})`);
         } catch (error) {
             console.error('Tracking Error:', error);
         }
