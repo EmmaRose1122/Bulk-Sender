@@ -124,8 +124,8 @@ export default function SettingsPage() {
         <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-950 tracking-tighter">System Infrastructure</h1>
-                    <p className="text-slate-500 font-medium mt-1">Configure your SMTP relay networks and transmission proxies.</p>
+                    <h1 className="text-4xl font-black text-slate-950 tracking-tighter">SMTP & Sending Accounts</h1>
+                    <p className="text-slate-500 font-medium mt-1">Connect your custom SMTP servers (Gmail, Outlook, SendGrid, etc).</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
@@ -144,8 +144,8 @@ export default function SettingsPage() {
                                 <Terminal className="h-6 w-6" />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-black text-white tracking-tight">New Relay Protocol</h2>
-                                <p className="text-slate-400 text-xs font-medium">Define a new outbound transmission vector.</p>
+                                <h2 className="text-2xl font-black text-white tracking-tight">Add New SMTP Account</h2>
+                                <p className="text-slate-400 text-xs font-medium">Connect a new email sending provider.</p>
                             </div>
                         </div>
 
@@ -208,7 +208,7 @@ export default function SettingsPage() {
                         <div className="h-10 w-10 rounded-xl gradient-success flex items-center justify-center text-white shadow-lg">
                             <Activity className="h-5 w-5" />
                         </div>
-                        <h2 className="text-lg font-black text-slate-900 tracking-tight uppercase tracking-widest text-xs font-bold text-slate-400">Deployed Infrastructure</h2>
+                        <h2 className="text-lg font-black text-slate-900 tracking-tight uppercase tracking-widest text-xs font-bold text-slate-400">Active Accounts</h2>
                     </div>
 
                     <div className="space-y-6">

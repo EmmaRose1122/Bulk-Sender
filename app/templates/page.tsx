@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -23,12 +23,39 @@ export default function TemplatesPage() {
         body: '',
     });
 
+    const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+    const insertToken = (token: string, fallback: string) => {
+        const textarea = bodyRef.current;
+        if (!textarea) {
+            // If ref is missing, just append
+            setFormData(prev => ({ ...prev, body: (prev.body || '') + `{{${token}|${fallback}}}` }));
+            return;
+        }
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const insertText = `{{${token}|${fallback}}}`;
+
+        const newText = text.substring(0, start) + insertText + text.substring(end);
+
+        setFormData(prev => ({ ...prev, body: newText }));
+
+        // Restore focus slightly later to ensure state update renders first
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + insertText.length, start + insertText.length);
+        }, 0);
+    };
+
     const handleSave = () => {
         if (!formData.name || !formData.subject || !formData.body) {
             toast.error('Please fill in all fields');
             return;
         }
 
+        // ... existing save logic ...
         if (editingId) {
             updateTemplate({
                 id: editingId,
@@ -65,6 +92,13 @@ export default function TemplatesPage() {
         setFormData({ name: '', subject: '', body: '' });
     };
 
+    const variableOptions = [
+        { label: 'Name', token: 'name', fallback: 'Friend' },
+        { label: 'Business', token: 'business_name', fallback: 'Partner' },
+        { label: 'Website', token: 'website', fallback: 'your site' },
+        { label: 'Email', token: 'email', fallback: 'there' },
+    ];
+
     return (
         <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -90,11 +124,17 @@ export default function TemplatesPage() {
                             </div>
                             <div>
                                 <h2 className="text-2xl font-black text-white tracking-tight">{editingId ? 'Modify Strategy' : 'Construct Blueprint'}</h2>
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                    {['name', 'business_name', 'website'].map(token => (
-                                        <code key={token} className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
-                                            {"{{"}{token}{"|fallback}"}
-                                        </code>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    <span className="text-[10px] font-bold text-slate-400 mr-2 uppercase tracking-wide my-auto">Quick Insert:</span>
+                                    {variableOptions.map(opt => (
+                                        <button
+                                            key={opt.token}
+                                            onClick={() => insertToken(opt.token, opt.fallback)}
+                                            className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-3 py-1 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/40 hover:text-white transition-all cursor-pointer active:scale-95"
+                                            title={`Insert {{${opt.token}|${opt.fallback}}}`}
+                                        >
+                                            {opt.label}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
@@ -114,7 +154,7 @@ export default function TemplatesPage() {
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Target Subject Line</Label>
                                     <Input
-                                        placeholder="Immediate response requested {{name}}"
+                                        placeholder="Immediate response requested {{name|Friend}}"
                                         value={formData.subject}
                                         onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                                         className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium"
@@ -130,12 +170,14 @@ export default function TemplatesPage() {
                                     </div>
                                 </div>
                                 <textarea
+                                    ref={bodyRef}
                                     className="w-full min-h-[120px] bg-slate-800/50 border-2 border-slate-700/50 rounded-2xl p-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-sm"
-                                    placeholder={isHtmlMode ? "<h1>Priority Communication...</h1>" : "Dear {{name}}, ..."}
+                                    placeholder={isHtmlMode ? "<h1>Priority Communication...</h1>" : "Dear {{name|Friend}}, ..."}
                                     value={formData.body}
                                     onChange={(e) => setFormData({ ...formData, body: e.target.value })}
                                 />
                             </div>
+
                         </div>
 
                         <div className="mt-8 flex justify-end gap-3">
