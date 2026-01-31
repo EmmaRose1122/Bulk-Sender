@@ -48,8 +48,18 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, message: 'Connection successful' });
     } catch (error: any) {
         console.error('SMTP Test Error:', error);
+
+        let message = error.message || 'Connection failed';
+
+        // Enhance error messages for common issues
+        if (message.includes('Greeting never received')) {
+            message = 'Handshake failed: Greeting never received. This usually means the port expects SSL/TLS but "Use SSL/TLS" is unchecked, or vice versa. Try toggling the SSL setting.';
+        } else if (message.includes('wrong version number')) {
+            message = 'Handshake failed: SSL version mismatch. You enabled SSL/TLS but the server might want a plaintext connection (STARTTLS). Try unchecking "Use SSL/TLS".';
+        }
+
         return NextResponse.json(
-            { success: false, message: error.message || 'Connection failed' },
+            { success: false, message },
             { status: 500 }
         );
     }

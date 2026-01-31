@@ -6,7 +6,8 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
-import { Trash2, Check, Plus, Server, HardDrive, Shield, Globe, Terminal, Activity, Zap, ShieldAlert } from 'lucide-react';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Trash2, Check, Plus, Server, HardDrive, Shield, Globe, Terminal, Activity, Zap, ShieldAlert, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { SmtpConfig } from '../../types/index';
 import { cn } from '../../lib/utils';
@@ -102,6 +103,15 @@ export default function SettingsPage() {
         toast.success('System parameters updated');
     };
 
+    const handlePortChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const port = Number(e.target.value);
+        setNewConfig({
+            ...newConfig,
+            port,
+            secure: port === 465 // Auto-enable SSL for port 465
+        });
+    };
+
     const testConnection = async (config: SmtpConfig) => {
         setIsTesting(config.id);
         try {
@@ -157,7 +167,21 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="space-y-3">
                                     <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Relay Port</Label>
-                                    <Input type="number" value={newConfig.port} onChange={(e: any) => setNewConfig({ ...newConfig, port: Number(e.target.value) })} placeholder="587" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
+                                    <Input type="number" value={newConfig.port} onChange={handlePortChange} placeholder="587" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
+                                </div>
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Encryption</Label>
+                                    <div className="flex items-center gap-3 h-12 px-4 rounded-xl bg-slate-800/50 border border-slate-700">
+                                        <Checkbox
+                                            id="secure-mode"
+                                            checked={newConfig.secure}
+                                            onCheckedChange={(checked: any) => setNewConfig({ ...newConfig, secure: checked })}
+                                            className="h-5 w-5 border-slate-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                        />
+                                        <Label htmlFor="secure-mode" className="text-sm font-medium text-slate-300 cursor-pointer flex items-center gap-2">
+                                            <Lock className="h-4 w-4 text-emerald-500" /> Use SSL/TLS
+                                        </Label>
+                                    </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Authentication User</Label>
@@ -236,6 +260,12 @@ export default function SettingsPage() {
                                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tunneling</p>
                                         <p className="text-xs font-black text-slate-900 lowercase">{config.proxy?.enabled ? 'Active' : 'Direct'}</p>
+                                    </div>
+                                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 col-span-2 flex items-center gap-3">
+                                        <div className={cn("h-2 w-2 rounded-full", config.secure ? "bg-emerald-500" : "bg-amber-500")} />
+                                        <p className="text-xs font-bold text-slate-700">
+                                            {config.secure ? 'SSL/TLS Encrypted' : 'Standard STARTTLS'}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
