@@ -41,7 +41,7 @@ const StatCard = ({ title, value, icon, description, trend }: StatCardProps) => 
 );
 
 export default function CampaignPage() {
-  const { accounts, templates, addCampaignToHistory, smtpConfigs, domains, updateCampaignStatus } = useAppContext();
+  const { accounts, templates, addCampaignToHistory, updateCampaignInHistory, smtpConfigs, domains, updateCampaignStatus } = useAppContext();
 
   // Campaign Configuration
   const [selectedSmtpId, setSelectedSmtpId] = useState<string>('');
@@ -65,6 +65,7 @@ export default function CampaignPage() {
   const [isManualInputOpen, setIsManualInputOpen] = useState(false);
   const [manualInputText, setManualInputText] = useState('');
   const [trackingBaseUrl, setTrackingBaseUrl] = useState<string>('');
+  const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -297,22 +298,29 @@ export default function CampaignPage() {
       current: endIndex,
     }));
 
+    // Persist batch progress to history immediately
+    if (currentCampaignId) {
+      updateCampaignInHistory(currentCampaignId, {
+        sent: startIndex + batchSent, // Cumulative
+        failed: (progress.failed || 0) + batchFailed,
+        logs: currentLogs
+      });
+    }
+
     if (endIndex < currentLogs.length && !stopRef.current) {
       const jitter = (Math.random() * 0.4) + 0.8;
       setTimeout(() => processBatch(endIndex), waitTime * jitter * 1000);
     } else if (!stopRef.current) {
       const finalizeCampaign = (isStopped: boolean) => {
         setIsSending(false);
-        addCampaignToHistory({
-          id: crypto.randomUUID(),
-          name: fileName || `Campaign ${new Date().toLocaleDateString()}`,
-          createdAt: Date.now(),
-          total: progress.total,
-          sent: progress.sent + batchSent,
-          failed: progress.failed + batchFailed,
-          status: isStopped ? 'paused' : 'completed',
-          logs: currentLogs,
-        });
+        if (currentCampaignId) {
+          updateCampaignInHistory(currentCampaignId, {
+            sent: progress.sent + batchSent,
+            failed: progress.failed + batchFailed,
+            status: isStopped ? 'paused' : 'completed',
+            logs: currentLogs,
+          });
+        }
         toast.success(isStopped ? 'Campaign stopped' : 'Campaign finished!');
       };
       finalizeCampaign(false);
@@ -323,8 +331,24 @@ export default function CampaignPage() {
     if (!selectedSmtpId) { toast.error('Select an account'); return; }
     if (selectedTemplateIds.length === 0) { toast.error('Select templates'); return; }
     if (logs.length === 0) { toast.error('Upload recipients'); return; }
+
+    const campaignId = crypto.randomUUID();
+    setCurrentCampaignId(campaignId);
     stopRef.current = false;
     setIsSending(true);
+
+    // Initial save to history
+    addCampaignToHistory({
+      id: campaignId,
+      name: fileName || `Campaign ${new Date().toLocaleDateString()}`,
+      createdAt: Date.now(),
+      total: logs.length,
+      sent: 0,
+      failed: 0,
+      status: 'sending',
+      logs: logs
+    });
+
     processBatch(0);
   };
 
@@ -341,9 +365,17 @@ export default function CampaignPage() {
           <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Campaign Control</h1>
           <p className="text-slate-500 font-medium mt-1">Design and deploy your high-impact email sequences.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Ready</span>
+        <div className="flex flex-col items-end gap-2">
+          {trackingBaseUrl.includes('localhost') && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full">
+              <ShieldAlert className="h-3 w-3 text-amber-500" />
+              <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">Tracking disabled on Localhost</span>
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Ready</span>
+          </div>
         </div>
       </header>
 

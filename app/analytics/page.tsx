@@ -152,22 +152,58 @@ export default function AnalyticsPage() {
                     </CardContent>
                 </Card>
 
-                {/* More Stats / Map Placeholder */}
-                <Card className="border-none shadow-lg lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-black text-slate-800">Geographic Distribution</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-center p-10 bg-slate-50/50 rounded-xl m-6">
-                        <div className="text-center opacity-50">
-                            <Globe className="h-24 w-24 text-slate-300 mx-auto mb-4 animate-pulse" />
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Global Heatmap Active</p>
+                {/* Geographic Distribution */}
+                <Card className="border-none shadow-lg lg:col-span-2 overflow-hidden">
+                    <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg font-black text-slate-800">Geographic Distribution</CardTitle>
+                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded">Live Data Active</span>
                         </div>
-                        {/* 
-                           In a real app, this would be an SVG map. 
-                           For this demo, we implemented the backend tracking (IP/Location) 
-                           but the visual map component is huge, so we use a placeholder 
-                           representing the "More Stats" section from the design.
-                        */}
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="grid grid-cols-1 md:grid-cols-2">
+                            <div className="p-8 flex items-center justify-center bg-indigo-50/20">
+                                <div className="text-center">
+                                    <div className="relative inline-block">
+                                        <Globe className="h-32 w-32 text-indigo-500 mb-4 animate-[spin_20s_linear_infinite]" />
+                                        <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full -z-10 animate-pulse" />
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Global Intelligence Network</p>
+                                </div>
+                            </div>
+                            <div className="p-8 space-y-6">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Top Visualizer Locations</h4>
+                                <div className="space-y-4">
+                                    {Object.entries(
+                                        campaignHistory
+                                            .flatMap(c => c.logs || [])
+                                            .filter(log => log.opened && log.location)
+                                            .reduce((acc, log) => {
+                                                acc[log.location!] = (acc[log.location!] || 0) + 1;
+                                                return acc;
+                                            }, {} as Record<string, number>)
+                                    )
+                                        .sort((a, b) => b[1] - a[1])
+                                        .slice(0, 5)
+                                        .map(([loc, count], idx) => (
+                                            <div key={loc} className="flex items-center justify-between group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                                                        {idx + 1}
+                                                    </div>
+                                                    <span className="text-sm font-bold text-slate-700">{loc}</span>
+                                                </div>
+                                                <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">{count} <span className="text-[10px] opacity-60">OPENS</span></span>
+                                            </div>
+                                        ))}
+                                    {Object.keys(campaignHistory.flatMap(c => c.logs || []).filter(l => l.opened && l.location)).length === 0 && (
+                                        <div className="py-10 text-center text-slate-300 italic text-sm">
+                                            Awaiting geo-intelligence data...
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

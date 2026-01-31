@@ -19,6 +19,7 @@ interface AppContextType {
 
     campaignHistory: Campaign[];
     addCampaignToHistory: (campaign: Campaign) => void;
+    updateCampaignInHistory: (id: string, updates: Partial<Campaign>) => void;
     updateCampaignStatus: (trackingData: any) => void;
     clearHistory: () => void;
 
@@ -91,6 +92,10 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
 
     const addCampaignToHistory = (campaign: Campaign) => {
         setCampaignHistory(prev => [campaign, ...prev]);
+    };
+
+    const updateCampaignInHistory = (id: string, updates: Partial<Campaign>) => {
+        setCampaignHistory(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
     };
 
     const updateCampaignStatus = (trackingData: any) => {
@@ -175,6 +180,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
                 updateTemplate,
                 campaignHistory,
                 addCampaignToHistory,
+                updateCampaignInHistory,
                 updateCampaignStatus,
                 clearHistory,
                 accounts,
