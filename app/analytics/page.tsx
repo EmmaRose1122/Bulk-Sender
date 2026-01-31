@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppContext } from '@/context/AppContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useAppContext } from '../../context/AppContext';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import { Trash2, ChevronDown, ChevronUp, CheckCircle, XCircle, Clock, Mail, BarChart3, ShieldCheck, Activity, Eye, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
+import { EmailLog } from '../../types/index';
 
 export default function AnalyticsPage() {
     const { campaignHistory, clearHistory } = useAppContext();
@@ -90,7 +91,7 @@ export default function AnalyticsPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {campaign.logs?.map((log) => (
+                                                {campaign.logs?.map((log: EmailLog) => (
                                                     <tr key={log.id} className="hover:bg-indigo-50/50 transition-colors group">
                                                         <td className="p-6"><span className="text-sm font-bold text-slate-700">{log.email}</span></td>
                                                         <td className="p-6">

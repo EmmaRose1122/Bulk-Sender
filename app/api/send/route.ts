@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
-import { SmtpConfig } from '@/types';
+import { SmtpConfig } from '../../../types/index';
 
 interface SendRequest {
     smtpConfig: SmtpConfig;
@@ -58,7 +58,8 @@ export async function POST(request: Request) {
             const { protocol, host, port, auth } = smtpConfig.proxy;
             const proxyUrl = `${protocol}://${auth?.user ? `${auth.user}:${auth.pass}@` : ''}${host}:${port}`;
 
-            console.log(`Using Proxy: ${protocol}://${host}:${port}`);
+            // Masked logging for security
+            console.log(`Using Proxy: ${protocol}://${host}:${port}${auth?.user ? ' (Authenticated)' : ''}`);
 
             if (protocol.startsWith('socks')) {
                 transportOptions.agent = new SocksProxyAgent(proxyUrl);

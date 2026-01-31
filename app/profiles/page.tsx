@@ -1,18 +1,18 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useAppContext } from '@/context/AppContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useAppContext } from '../../context/AppContext';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Card, CardContent } from '../../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../../components/ui/dialog';
+import { Checkbox } from '../../components/ui/checkbox';
 import { toast } from 'sonner';
 import { Plus, Trash2, Upload, LogIn, CheckSquare, Square, Mail, Users, ShieldCheck, Activity } from 'lucide-react';
 import Papa from 'papaparse';
-import { AccountProfile } from '@/types';
-import { cn } from '@/lib/utils';
+import { AccountProfile } from '../../types/index';
+import { cn } from '../../lib/utils';
 
 export default function ProfilesPage() {
     const { accounts, addAccount, removeAccount, updateAccount } = useAppContext();
@@ -22,7 +22,7 @@ export default function ProfilesPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSelectAll = () => {
-        setSelectedIds(accounts.map(a => a.id));
+        setSelectedIds(accounts.map((a: AccountProfile) => a.id));
     };
 
     const handleDeselectAll = () => {
@@ -249,7 +249,7 @@ export default function ProfilesPage() {
                                     <td className="p-6">
                                         <Checkbox
                                             checked={selectedIds.includes(account.id)}
-                                            onCheckedChange={() => toggleSelection(account.id)}
+                                            onCheckedChange={(checked: any) => toggleSelection(account.id)}
                                             className="h-5 w-5 rounded-md border-2 border-slate-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 transition-all group-hover:border-indigo-400"
                                         />
                                     </td>

@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppContext } from '@/context/AppContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { useAppContext } from '../../context/AppContext';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
 import { Trash2, Plus, Eye, Save, Mail, MessageSquare, Copy, Edit3, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { EmailTemplate } from '@/types';
-import { cn } from '@/lib/utils';
+import { EmailTemplate } from '../../types/index';
+import { cn } from '../../lib/utils';
 
 export default function TemplatesPage() {
     const { templates, addTemplate, removeTemplate, updateTemplate } = useAppContext();

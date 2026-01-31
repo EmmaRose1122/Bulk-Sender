@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppContext } from '@/context/AppContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { useAppContext } from '../../context/AppContext';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
 import { Trash2, Check, Plus, Server, HardDrive, Shield, Globe, Terminal, Activity, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import { SmtpConfig } from '@/types';
-import { cn } from '@/lib/utils';
+import { SmtpConfig } from '../../types/index';
+import { cn } from '../../lib/utils';
 
 export default function SettingsPage() {
     const { smtpConfigs, addSmtpConfig, removeSmtpConfig, defaultSmtpId, setDefaultSmtpId } = useAppContext();
@@ -124,19 +124,19 @@ export default function SettingsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-3">
                                     <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Relay Host</Label>
-                                    <Input value={newConfig.host} onChange={(e) => setNewConfig({ ...newConfig, host: e.target.value })} placeholder="smtp.provider.com" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
+                                    <Input value={newConfig.host} onChange={(e: any) => setNewConfig({ ...newConfig, host: e.target.value })} placeholder="smtp.provider.com" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
                                 </div>
                                 <div className="space-y-3">
                                     <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Relay Port</Label>
-                                    <Input type="number" value={newConfig.port} onChange={(e) => setNewConfig({ ...newConfig, port: Number(e.target.value) })} placeholder="587" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
+                                    <Input type="number" value={newConfig.port} onChange={(e: any) => setNewConfig({ ...newConfig, port: Number(e.target.value) })} placeholder="587" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
                                 </div>
                                 <div className="space-y-3">
                                     <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Authentication User</Label>
-                                    <Input value={newConfig.user} onChange={(e) => setNewConfig({ ...newConfig, user: e.target.value })} placeholder="service@agency.com" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
+                                    <Input value={newConfig.user} onChange={(e: any) => setNewConfig({ ...newConfig, user: e.target.value })} placeholder="service@agency.com" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
                                 </div>
                                 <div className="space-y-3">
                                     <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Secret Key (Pass)</Label>
-                                    <Input type="password" value={newConfig.pass} onChange={(e) => setNewConfig({ ...newConfig, pass: e.target.value })} placeholder="••••••••" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
+                                    <Input type="password" value={newConfig.pass} onChange={(e: any) => setNewConfig({ ...newConfig, pass: e.target.value })} placeholder="••••••••" className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium" />
                                 </div>
                             </div>
 

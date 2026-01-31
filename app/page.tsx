@@ -1,20 +1,20 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useAppContext } from '@/context/AppContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { useAppContext } from '../context/AppContext';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../components/ui/dialog';
+import { Textarea } from '../components/ui/textarea';
 import { Upload, Play, Pause, CheckCircle, XCircle, Clock, Mail, AlertTriangle, Server, Layers, FileText, Activity, Users, ListTodo, MessageSquare, BarChart3, ShieldCheck, ShieldAlert, Shield, Eye } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
-import { EmailLog, AccountProfile, EmailTemplate } from '@/types';
-import { cn } from '@/lib/utils';
-import { resolveSpintax, generateFingerprint } from '@/lib/spintax';
-import { analyzeDeliverability, DeliverabilityScore } from '@/lib/deliverability';
+import { EmailLog, AccountProfile, EmailTemplate } from '../types/index';
+import { cn } from '../lib/utils';
+import { resolveSpintax, generateFingerprint } from '../lib/spintax';
+import { analyzeDeliverability, DeliverabilityScore } from '../lib/deliverability';
 
 interface StatCardProps {
   title: string;
@@ -203,24 +203,31 @@ export default function CampaignPage() {
     const endIndex = Math.min(startIndex + batchSize, currentLogs.length);
     const batch = currentLogs.slice(startIndex, endIndex);
     const account = accounts.find((a: AccountProfile) => a.id === selectedSmtpId);
+    const smtpRelay = smtpConfigs.find((s: any) => s.id === selectedSmtpId);
 
-    if (!account) {
-      toast.error('Gmail account not found.');
+    if (!account && !smtpRelay) {
+      toast.error('Source account configuration not found.');
       setIsSending(false);
       return;
     }
 
-    const currentSmtp = {
-      id: account.id || '',
-      name: account.name,
+    const currentSmtp = smtpRelay ? {
+      host: smtpRelay.host,
+      port: smtpRelay.port,
+      secure: smtpRelay.secure,
+      user: smtpRelay.user,
+      pass: smtpRelay.pass,
+      fromEmail: smtpRelay.fromEmail || smtpRelay.user,
+      fromName: smtpRelay.fromName || '',
+      proxy: smtpRelay.proxy
+    } : {
       host: 'smtp.gmail.com',
       port: 587,
       secure: false,
-      user: account.email,
-      pass: account.password || '',
-      fromEmail: account.email,
-      fromName: account.name,
-      auth: { user: account.email, pass: account.password || '' }
+      user: account!.email,
+      pass: account!.password || '',
+      fromEmail: account!.email,
+      fromName: account!.name,
     };
 
     const promises = batch.map(async (log, batchIndex) => {
@@ -381,14 +388,25 @@ export default function CampaignPage() {
                   value={selectedSmtpId}
                   onChange={(e) => setSelectedSmtpId(e.target.value)}
                 >
-                  <option value="" className="bg-slate-900">Select Account</option>
-                  {accounts.map((a: AccountProfile) => (
-                    <option key={a.id} value={a.id} className="bg-slate-900">{a.name} &lt;{a.email}&gt;</option>
-                  ))}
+                  <option value="" className="bg-slate-900">Select Transmission Vector</option>
+                  {accounts.length > 0 && (
+                    <optgroup label="Direct Profiles" className="bg-slate-900 text-indigo-400 font-bold uppercase text-[10px]">
+                      {accounts.map((a: AccountProfile) => (
+                        <option key={a.id} value={a.id} className="bg-slate-900 text-slate-200">{a.name} ({a.email})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {smtpConfigs.length > 0 && (
+                    <optgroup label="Relay Nodes (Custom SMTP)" className="bg-slate-900 text-emerald-400 font-bold uppercase text-[10px]">
+                      {smtpConfigs.map((s: any) => (
+                        <option key={s.id} value={s.id} className="bg-slate-900 text-slate-200">{s.host} ({s.user})</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
-                {accounts.length === 0 && (
+                {accounts.length === 0 && smtpConfigs.length === 0 && (
                   <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 border border-amber-400/20 rounded-lg p-3">
-                    ⚠️ No accounts detected. Configure accounts first.
+                    ⚠️ No accounts or relays detected. Configure infrastructure first.
                   </p>
                 )}
               </div>
@@ -452,16 +470,16 @@ export default function CampaignPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
                   <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Tracking Base URL</Label>
-                  <Input value={trackingBaseUrl} onChange={(e) => setTrackingBaseUrl(e.target.value)} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" placeholder="https://..." />
+                  <Input value={trackingBaseUrl} onChange={(e: any) => setTrackingBaseUrl(e.target.value)} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" placeholder="https://..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Batch</Label>
-                    <Input type="number" value={batchSize} onChange={(e) => setBatchSize(Number(e.target.value))} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" />
+                    <Input type="number" value={batchSize} onChange={(e: any) => setBatchSize(Number(e.target.value))} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" />
                   </div>
                   <div className="space-y-3">
                     <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Wait (s)</Label>
-                    <Input type="number" value={waitTime} onChange={(e) => setWaitTime(Number(e.target.value))} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" />
+                    <Input type="number" value={waitTime} onChange={(e: any) => setWaitTime(Number(e.target.value))} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" />
                   </div>
                 </div>
               </div>
@@ -543,7 +561,7 @@ export default function CampaignPage() {
               placeholder="operator1@agency.com&#10;operator2@agency.com"
               className="min-h-[300px] bg-slate-800/50 border-2 border-slate-700/50 text-white rounded-2xl p-6 focus:ring-2 focus:ring-indigo-500"
               value={manualInputText}
-              onChange={(e) => setManualInputText(e.target.value)}
+              onChange={(e: any) => setManualInputText(e.target.value)}
             />
           </div>
           <DialogFooter>
