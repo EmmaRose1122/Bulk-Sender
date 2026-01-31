@@ -22,7 +22,10 @@ export async function GET(request: Request) {
     if (id) {
         try {
             const data = JSON.parse(fs.readFileSync(TRACKING_FILE, 'utf8'));
+            const existing = data[id] || {};
             data[id] = {
+                ...existing,
+                opened: true,
                 openedAt: Date.now(),
                 ip: request.headers.get('x-forwarded-for') || 'unknown',
                 userAgent: request.headers.get('user-agent') || 'unknown'

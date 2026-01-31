@@ -4,8 +4,18 @@ import { SmtpConfig } from '../../../types/index';
 
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
+import { checkIpAllowlist } from '../../../lib/security';
 
 export async function POST(request: Request) {
+    const clientIp = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const security = checkIpAllowlist(clientIp);
+
+    if (!security.allowed) {
+        return NextResponse.json(
+            { success: false, message: security.reason },
+            { status: 403 }
+        );
+    }
     try {
         const body = await request.json();
         const config: SmtpConfig = body;

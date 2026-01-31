@@ -54,4 +54,34 @@ export interface EmailLog {
   sentAt?: number;
   opened?: boolean;
   openedAt?: number;
+  clicked?: boolean;
+  clickedAt?: number;
+  unsubscribed?: boolean;
+  unsubscribedAt?: number;
+  ip?: string;
+  location?: string;
+  userAgent?: string;
+}
+
+export interface Domain {
+  id: string;
+  name: string;
+  status: 'active' | 'pending' | 'failed';
+  dkim: string;
+  spf: string;
+  dmarc: string;
+  createdAt: number;
+}
+
+export interface InboundMessage {
+  id: string;
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+  receivedAt: number;
+}
+
+export interface SecurityConfig {
+  ipAllowlist: string[];
 }

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { SmtpConfig, EmailTemplate, Campaign, AccountProfile } from '../types/index';
+import { SmtpConfig, EmailTemplate, Campaign, AccountProfile, Domain, InboundMessage, SecurityConfig } from '../types/index';
 
 interface AppContextType {
     smtpConfigs: SmtpConfig[];
@@ -25,6 +25,18 @@ interface AppContextType {
     addAccount: (account: AccountProfile) => void;
     removeAccount: (id: string) => void;
     updateAccount: (account: AccountProfile) => void;
+
+    domains: Domain[];
+    addDomain: (domain: Domain) => void;
+    removeDomain: (id: string) => void;
+    updateDomain: (domain: Domain) => void;
+
+    inboundMessages: InboundMessage[];
+    addInboundMessage: (msg: InboundMessage) => void;
+    clearInbound: () => void;
+
+    securityConfig: SecurityConfig;
+    updateSecurityConfig: (config: SecurityConfig) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -35,6 +47,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     const [templates, setTemplates] = useLocalStorage<EmailTemplate[]>('email_templates', []);
     const [campaignHistory, setCampaignHistory] = useLocalStorage<Campaign[]>('campaign_history', []);
     const [accounts, setAccounts] = useLocalStorage<AccountProfile[]>('account_profiles', []);
+    const [domains, setDomains] = useLocalStorage<Domain[]>('domain_profiles', []);
+    const [inboundMessages, setInboundMessages] = useLocalStorage<InboundMessage[]>('inbound_hub', []);
+    const [securityConfig, setSecurityConfig] = useLocalStorage<SecurityConfig>('security_settings', { ipAllowlist: [] });
 
     // Ensure defaultSmtpId is valid
     useEffect(() => {
@@ -93,6 +108,30 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         setAccounts((prev: AccountProfile[]) => prev.map((a: AccountProfile) => (a.id === account.id ? account : a)));
     };
 
+    const addDomain = (domain: Domain) => {
+        setDomains(prev => [...prev, domain]);
+    };
+
+    const removeDomain = (id: string) => {
+        setDomains(prev => prev.filter(d => d.id !== id));
+    };
+
+    const updateDomain = (domain: Domain) => {
+        setDomains(prev => prev.map(d => d.id === domain.id ? domain : d));
+    };
+
+    const addInboundMessage = (msg: InboundMessage) => {
+        setInboundMessages(prev => [msg, ...prev]);
+    };
+
+    const clearInbound = () => {
+        setInboundMessages([]);
+    };
+
+    const updateSecurityConfig = (config: SecurityConfig) => {
+        setSecurityConfig(config);
+    };
+
     return (
         <AppContext.Provider
             value={{
@@ -113,6 +152,15 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
                 addAccount,
                 removeAccount,
                 updateAccount,
+                domains,
+                addDomain,
+                removeDomain,
+                updateDomain,
+                inboundMessages,
+                addInboundMessage,
+                clearInbound,
+                securityConfig,
+                updateSecurityConfig,
             }}
         >
             {children}

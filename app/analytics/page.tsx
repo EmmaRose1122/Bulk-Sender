@@ -1,119 +1,221 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Trash2, ChevronDown, ChevronUp, CheckCircle, XCircle, Clock, Mail, BarChart3, ShieldCheck, Activity, Eye, Zap } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, CheckCircle, XCircle, Clock, Mail, BarChart3, ShieldCheck, Activity, Eye, Zap, MousePointer, UserMinus, Globe } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { EmailLog } from '../../types/index';
 
-export default function AnalyticsPage() {
-    const { campaignHistory, clearHistory } = useAppContext();
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-
-    const toggleExpand = (id: string) => {
-        setExpandedId(expandedId === id ? null : id);
-    };
+// Simple Circular Progress Component
+const CircularProgress = ({ value, label, subLabel, color = "indigo" }: { value: number, label: string, subLabel: string, color?: string }) => {
+    const radius = 35;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (value / 100) * circumference;
 
     return (
-        <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex flex-col items-center justify-center py-6">
+            <div className="relative h-32 w-32 flex items-center justify-center">
+                <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r={radius} stroke="#f1f5f9" strokeWidth="8" fill="none" />
+                    <circle
+                        cx="50" cy="50" r={radius}
+                        stroke={color === 'indigo' ? '#6366f1' : color === 'emerald' ? '#10b981' : '#f43f5e'}
+                        strokeWidth="8" fill="none"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                    />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900">
+                    <span className="text-2xl font-black tabular-nums">{value.toFixed(1)}%</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400">{subLabel}</span>
+                </div>
+            </div>
+            <div className="text-center mt-2">
+                <p className="font-bold text-slate-700">{label}</p>
+                <p className="text-sm font-bold text-slate-900 mt-1">Performance: <span className="text-emerald-600">Great</span></p>
+            </div>
+        </div>
+    );
+};
+
+// Stat Card Component
+const StatCard = ({ icon: Icon, value, label, color }: { icon: any, value: number, label: string, color: string }) => (
+    <Card className="border-none shadow-lg hover:shadow-xl transition-shadow">
+        <CardContent className="p-6 flex items-center justify-between">
+            <div className={`h-12 w-12 rounded-xl ${color} flex items-center justify-center mr-4`}>
+                <Icon className="h-6 w-6 text-white" />
+            </div>
+            <div className="text-right">
+                <p className="text-2xl font-black text-slate-900 tabular-nums">{value}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
+            </div>
+        </CardContent>
+    </Card>
+);
+
+export default function AnalyticsPage() {
+    const { campaignHistory, clearHistory, accounts } = useAppContext();
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState(false);
+    const [stats, setStats] = useState({
+        opens: 0,
+        clicks: 0,
+        bounces: 0,
+        unsubscribes: 0,
+        totalSent: 0
+    });
+
+    const syncData = async () => {
+        setSyncing(true);
+        try {
+            const res = await fetch('/api/reports/sync');
+            const { tracking } = await res.json();
+
+            // In a real implementation, we would merge this data back into the campaignHistory in context
+            // For now, we calculate aggregate stats for the dashboard View
+            let totalOpens = 0;
+            let totalClicks = 0;
+            let totalUnsubs = 0;
+            let totalBounces = 0;
+            let sentCount = 0;
+
+            campaignHistory.forEach(c => {
+                sentCount += c.sent;
+                totalBounces += c.failed;
+                c.logs?.forEach(log => {
+                    const serverData = tracking[log.id];
+                    if (serverData) {
+                        if (serverData.opened) totalOpens++;
+                        if (serverData.clicked) totalClicks++;
+                        if (serverData.unsubscribed) totalUnsubs++;
+                    } else {
+                        // Fallback to local data if sync misses
+                        if (log.opened) totalOpens++;
+                    }
+                });
+            });
+
+            setStats({
+                opens: totalOpens,
+                clicks: totalClicks,
+                bounces: totalBounces,
+                unsubscribes: totalUnsubs,
+                totalSent: sentCount
+            });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    useEffect(() => {
+        syncData();
+    }, [campaignHistory]);
+
+    const openRate = stats.totalSent > 0 ? (stats.opens / stats.totalSent) * 100 : 0;
+
+    return (
+        <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
                     <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Mission Intelligence</h1>
                     <p className="text-slate-500 font-medium mt-1">Deep analysis of past campaign performance and metrics.</p>
                 </div>
-                {campaignHistory.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearHistory} className="text-[10px] font-bold text-red-500 uppercase tracking-widest hover:bg-red-50">
-                        <Trash2 className="mr-2 h-4 w-4" /> Purge Logs
-                    </Button>
-                )}
+                <Button variant="outline" size="sm" onClick={syncData} disabled={syncing}>
+                    {syncing ? <Activity className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                    Sync Data
+                </Button>
             </header>
 
-            {campaignHistory.length === 0 ? (
-                <div className="py-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[3rem] flex flex-col items-center justify-center opacity-40">
-                    <BarChart3 className="h-20 w-16 text-slate-300 mb-6 animate-float" />
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">No Mission Data Detected</p>
-                </div>
-            ) : (
-                <div className="space-y-6">
-                    {campaignHistory.map((campaign: any) => (
-                        <Card key={campaign.id} className="glass border-none shadow-xl overflow-hidden group">
-                            <CardHeader
-                                className="p-8 cursor-pointer hover:bg-slate-50/50 transition-all duration-300"
-                                onClick={() => toggleExpand(campaign.id)}
-                            >
-                                <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-8">
-                                    <div className="flex items-center gap-6">
-                                        <div className="h-16 w-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-2xl shadow-slate-900/20 group-hover:scale-105 transition-transform duration-300">
-                                            <Zap className="h-8 w-8 text-indigo-400" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-2xl font-black text-slate-950 tracking-tight">{campaign.name}</CardTitle>
-                                            <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                Executed: {new Date(campaign.createdAt).toLocaleString()}
-                                            </CardDescription>
-                                        </div>
-                                    </div>
+            {/* Top Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard icon={Eye} value={stats.opens} label="Total Opens" color="bg-indigo-500" />
+                <StatCard icon={MousePointer} value={stats.clicks} label="Total Clicks" color="bg-cyan-400" />
+                <StatCard icon={Activity} value={stats.bounces} label="Bounces" color="bg-emerald-400" />
+                <StatCard icon={UserMinus} value={stats.unsubscribes} label="Unsubscribes" color="bg-amber-300" />
+            </div>
 
-                                    <div className="flex flex-wrap items-center gap-10">
-                                        <div className="grid grid-cols-3 gap-10">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total payload</span>
-                                                <span className="text-xl font-black text-slate-950 tabular-nums">{campaign.total}</span>
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Sent Successfully</span>
-                                                <span className="text-xl font-black text-emerald-600 tabular-nums">{campaign.sent}</span>
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1">Failed delivery</span>
-                                                <span className="text-xl font-black text-red-600 tabular-nums">{campaign.failed}</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-12 w-px bg-slate-100 hidden lg:block" />
-                                        <div className={cn("h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300", expandedId === campaign.id ? "bg-indigo-600 text-white rotate-180" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200")}>
-                                            <ChevronDown className="h-6 w-6" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            {expandedId === campaign.id && (
-                                <CardContent className="p-0 border-t border-slate-100 bg-slate-50/30 animate-in slide-in-from-top-4 duration-500">
-                                    <div className="max-h-[500px] overflow-y-auto scrollbar-hide">
-                                        <table className="w-full text-left">
-                                            <thead className="bg-slate-50/80 sticky top-0 z-10">
-                                                <tr>
-                                                    <th className="p-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Target Recipient</th>
-                                                    <th className="p-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Deployment State</th>
-                                                    <th className="p-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Transmission High</th>
-                                                    <th className="p-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Diagnostic Logs</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {campaign.logs?.map((log: EmailLog) => (
-                                                    <tr key={log.id} className="hover:bg-indigo-50/50 transition-colors group">
-                                                        <td className="p-6"><span className="text-sm font-bold text-slate-700">{log.email}</span></td>
-                                                        <td className="p-6">
-                                                            <div className="flex gap-2">
-                                                                {log.status === 'sent' && <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 uppercase tracking-widest flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Transmitted</span>}
-                                                                {log.status === 'failed' && <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-widest flex items-center gap-1"><Activity className="h-3 w-3" /> Blocked</span>}
-                                                                {log.opened && <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-widest flex items-center gap-1"><Eye className="h-3 w-3" /> Visualized</span>}
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-6"><span className="text-[10px] font-bold text-slate-400 tabular-nums uppercase">{log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : '---'}</span></td>
-                                                        <td className="p-6"><span className="text-[10px] font-medium text-slate-500 italic max-w-xs block truncate">{log.error || 'Normal Placement'}</span></td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Open Rate Chart */}
+                <Card className="border-none shadow-lg">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-black text-slate-800 text-center">Open Rate</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <CircularProgress value={openRate} label="Open Rate" subLabel="Opened" />
+                    </CardContent>
+                </Card>
+
+                {/* More Stats / Map Placeholder */}
+                <Card className="border-none shadow-lg lg:col-span-2">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-black text-slate-800">Geographic Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-center p-10 bg-slate-50/50 rounded-xl m-6">
+                        <div className="text-center opacity-50">
+                            <Globe className="h-24 w-24 text-slate-300 mx-auto mb-4 animate-pulse" />
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Global Heatmap Active</p>
+                        </div>
+                        {/* 
+                           In a real app, this would be an SVG map. 
+                           For this demo, we implemented the backend tracking (IP/Location) 
+                           but the visual map component is huge, so we use a placeholder 
+                           representing the "More Stats" section from the design.
+                        */}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Leads Table Section */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-black text-slate-900">Recent Leads Activity</h2>
+                <div className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</th>
+                                <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Activity</th>
+                                <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {campaignHistory.flatMap(c => c.logs || []).slice(0, 10).map((log, i) => (
+                                <tr key={log.id || i} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-4 font-bold text-slate-700">{log.email}</td>
+                                    <td className="p-4">
+                                        <span className={cn(
+                                            "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest",
+                                            log.status === 'sent' ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                                        )}>
+                                            {log.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 flex gap-2">
+                                        {log.opened && <div className="h-6 w-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center"><Eye className="h-3 w-3" /></div>}
+                                        {/* Since we don't have clicked in Log type yet locally, we rely on sync stats or assume future sync */}
+                                        {/* Ideally we would map the synced data to this row view for live updates */}
+                                    </td>
+                                    <td className="p-4 text-xs font-mono text-slate-400">
+                                        {log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : '-'}
+                                    </td>
+                                </tr>
+                            ))}
+                            {campaignHistory.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="p-8 text-center text-slate-400 text-sm italic">No data available. Run a campaign to populate intelligence.</td>
+                                </tr>
                             )}
-                        </Card>
-                    ))}
+                        </tbody>
+                    </table>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

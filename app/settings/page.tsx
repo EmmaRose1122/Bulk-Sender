@@ -1,19 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
-import { Trash2, Check, Plus, Server, HardDrive, Shield, Globe, Terminal, Activity, Zap } from 'lucide-react';
+import { Trash2, Check, Plus, Server, HardDrive, Shield, Globe, Terminal, Activity, Zap, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { SmtpConfig } from '../../types/index';
 import { cn } from '../../lib/utils';
 
 export default function SettingsPage() {
-    const { smtpConfigs, addSmtpConfig, removeSmtpConfig, defaultSmtpId, setDefaultSmtpId } = useAppContext();
+    const { smtpConfigs, addSmtpConfig, removeSmtpConfig, defaultSmtpId, setDefaultSmtpId, securityConfig, updateSecurityConfig: updateLocalSecurity } = useAppContext();
     const [isTesting, setIsTesting] = useState<string | null>(null);
+    const [newIp, setNewIp] = useState('');
+
+    useEffect(() => {
+        const fetchSecurity = async () => {
+            try {
+                const res = await fetch('/api/security');
+                const data = await res.json();
+                if (data.success) {
+                    updateLocalSecurity(data.config);
+                }
+            } catch (error) {
+                console.error('Failed to sync security parameters');
+            }
+        };
+        fetchSecurity();
+    }, []);
+
+    const updateSecurityConfig = async (config: any) => {
+        updateLocalSecurity(config);
+        try {
+            await fetch('/api/security', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config),
+            });
+        } catch (error) {
+            toast.error('Failed to synchronize cloud security');
+        }
+    };
 
     const [newConfig, setNewConfig] = useState<Partial<SmtpConfig>>({
         host: '',
@@ -237,6 +266,93 @@ export default function SettingsPage() {
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
+
+            {/* Security Center */}
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-10">
+                <div>
+                    <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Security Center</h1>
+                    <p className="text-slate-500 font-medium mt-1">Restrict infrastructure access to authorized network segments.</p>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+                <div className="xl:col-span-8">
+                    <Card className="glass-dark border-none shadow-2xl p-8 rounded-3xl overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 blur-[80px] rounded-full pointer-events-none" />
+
+                        <div className="flex items-center gap-4 mb-10">
+                            <div className="h-12 w-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400 shadow-xl">
+                                <Shield className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black text-white tracking-tight">Access Control (IP Allowlist)</h2>
+                                <p className="text-slate-400 text-xs font-medium">Only allow requests from specific IP addresses or ranges.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-8">
+                            <div className="flex gap-4">
+                                <Input
+                                    value={newIp}
+                                    onChange={(e) => setNewIp(e.target.value)}
+                                    placeholder="e.g. 192.168.1.1 or 1.1.1.0/24"
+                                    className="bg-slate-800/50 border-slate-700 h-14 rounded-xl text-white font-medium flex-1"
+                                />
+                                <Button
+                                    onClick={() => {
+                                        if (!newIp) return;
+                                        updateSecurityConfig({ ipAllowlist: [...securityConfig.ipAllowlist, newIp] });
+                                        setNewIp('');
+                                        toast.success('Security shield updated');
+                                    }}
+                                    className="gradient-primary h-14 px-10 rounded-xl text-white font-black uppercase tracking-widest"
+                                >
+                                    Authorize
+                                </Button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {securityConfig.ipAllowlist.length === 0 ? (
+                                    <div className="p-10 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center text-slate-500">
+                                        <Shield className="h-8 w-8 mb-3 opacity-20" />
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Global Access Enabled (No Restrictions)</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {securityConfig.ipAllowlist.map((ip, index) => (
+                                            <div key={index} className="flex items-center justify-between p-4 bg-slate-800/30 border border-slate-700 rounded-xl group/ip">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
+                                                    <code className="text-sm font-bold text-slate-300">{ip}</code>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => {
+                                                        const updated = securityConfig.ipAllowlist.filter((_, i) => i !== index);
+                                                        updateSecurityConfig({ ipAllowlist: updated });
+                                                        toast.success('Address decommissioned');
+                                                    }}
+                                                    className="h-8 w-8 text-slate-500 hover:text-red-400 opacity-0 group-hover/ip:opacity-100 transition-opacity"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-4">
+                                <ShieldAlert className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                <p className="text-[10px] font-medium text-amber-200 uppercase tracking-wider leading-relaxed">
+                                    CAUTION: Be sure to include your current IP address to avoid locking yourself out of the transmission engine.
+                                </p>
+                            </div>
+                        </div>
+                    </Card>
                 </div>
             </div>
         </div>

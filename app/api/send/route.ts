@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { SmtpConfig } from '../../../types/index';
+import { checkIpAllowlist } from '../../../lib/security';
 
 interface SendRequest {
     smtpConfig: SmtpConfig;

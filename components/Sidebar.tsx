@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, ListTodo, BarChart3, Users } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { MessageSquare, ListTodo, BarChart3, Users, Globe, Mail } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 export function Sidebar() {
     const pathname = usePathname();
@@ -82,6 +82,34 @@ export function Sidebar() {
                         >
                             <BarChart3 className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/analytics' ? "text-white" : "text-indigo-400")} />
                             Reports
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            href="/domains"
+                            className={cn(
+                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
+                                pathname === '/domains'
+                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
+                                    : 'hover:bg-slate-800/50 hover:text-white'
+                            )}
+                        >
+                            <Globe className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/domains' ? "text-white" : "text-indigo-400")} />
+                            Domains
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            href="/inbound"
+                            className={cn(
+                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
+                                pathname === '/inbound'
+                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
+                                    : 'hover:bg-slate-800/50 hover:text-white'
+                            )}
+                        >
+                            <Mail className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/inbound' ? "text-white" : "text-indigo-400")} />
+                            Inbound Hub
                         </Link>
                     </li>
                 </ul>

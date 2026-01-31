@@ -11,7 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Trash2, Plus, Eye, Save, Search, Layout, FileCode, CheckCircle2, AlertCircle, ShieldCheck, Shield, MessageSquare, ListTodo, Users, ShieldAlert, BarChart3, Settings, Play, Square, Pause, ChevronDown, Activity, Zap, CheckCircle, XCircle, Clock, Mail } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
-import { EmailLog, AccountProfile, EmailTemplate } from '../types/index';
+import { EmailLog, AccountProfile, EmailTemplate, Domain } from '../types/index';
 import { cn } from '../lib/utils';
 import { resolveSpintax, generateFingerprint } from '../lib/spintax';
 import { analyzeDeliverability, DeliverabilityScore } from '../lib/deliverability';
@@ -41,10 +41,11 @@ const StatCard = ({ title, value, icon, description, trend }: StatCardProps) => 
 );
 
 export default function CampaignPage() {
-  const { smtpConfigs, defaultSmtpId, templates, addCampaignToHistory, accounts } = useAppContext();
+  const { accounts, templates, addCampaignToHistory, smtpConfigs, domains } = useAppContext();
 
   // Campaign Configuration
-  const [selectedSmtpId, setSelectedSmtpId] = useState<string>(defaultSmtpId || '');
+  const [selectedSmtpId, setSelectedSmtpId] = useState<string>('');
+  const [selectedDomainId, setSelectedDomainId] = useState<string>('');
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
   const [batchSize, setBatchSize] = useState<number>(10);
   const [waitTime, setWaitTime] = useState<number>(5); // Seconds
@@ -182,86 +183,69 @@ export default function CampaignPage() {
   };
 
   const processBatch = async (startIndex: number) => {
-    const currentLogs = logsRef.current;
+    const endIndex = Math.min(startIndex + batchSize, logs.length);
+    const batch = logs.slice(startIndex, endIndex);
 
-    const finalizeCampaign = (isStopped: boolean) => {
-      setIsSending(false);
-      addCampaignToHistory({
-        id: crypto.randomUUID(),
-        name: fileName || `Campaign ${new Date().toLocaleDateString()}`,
-        createdAt: Date.now(),
-        total: progress.total,
-        sent: progress.sent,
-        failed: progress.failed,
-        status: isStopped ? 'paused' : 'completed',
-        logs: currentLogs,
-      });
-      toast.success(isStopped ? 'Campaign stopped' : 'Campaign finished!');
-    };
-
-    if (stopRef.current || startIndex >= currentLogs.length) {
-      finalizeCampaign(stopRef.current);
-      return;
-    }
-
-    const endIndex = Math.min(startIndex + batchSize, currentLogs.length);
-    const batch = currentLogs.slice(startIndex, endIndex);
-    const account = accounts.find((a: AccountProfile) => a.id === selectedSmtpId);
-    const smtpRelay = smtpConfigs.find((s: any) => s.id === selectedSmtpId);
-
-    if (!account && !smtpRelay) {
-      toast.error('Source account configuration not found.');
-      setIsSending(false);
-      return;
-    }
-
-    const currentSmtp = smtpRelay ? {
-      host: smtpRelay.host,
-      port: smtpRelay.port,
-      secure: smtpRelay.secure,
-      user: smtpRelay.user,
-      pass: smtpRelay.pass,
-      fromEmail: smtpRelay.fromEmail || smtpRelay.user,
-      fromName: smtpRelay.fromName || '',
-      proxy: smtpRelay.proxy
-    } : {
+    const currentSmtp = smtpConfigs.find(s => s.id === selectedSmtpId) || (accounts.find(a => a.id === selectedSmtpId) ? {
       host: 'smtp.gmail.com',
       port: 587,
       secure: false,
-      user: account!.email,
-      pass: account!.password || '',
-      fromEmail: account!.email,
-      fromName: account!.name,
-    };
+      user: accounts.find(a => a.id === selectedSmtpId)!.email,
+      pass: accounts.find(a => a.id === selectedSmtpId)!.password || '',
+      fromEmail: accounts.find(a => a.id === selectedSmtpId)!.email,
+      fromName: accounts.find(a => a.id === selectedSmtpId)!.name,
+    } : null);
 
-    const promises = batch.map(async (log, batchIndex) => {
+    if (!currentSmtp) {
+      toast.error('Transmission vector lost. Neutralizing campaign.');
+      setIsSending(false);
+      return;
+    }
+
+    const currentLogs = [...logs];
+
+    // Parallel Multi-Threading for Enterprise Scaling
+    const sendPromises = batch.map(async (recipientLog, batchIndex) => {
       const globalIndex = startIndex + batchIndex;
       const rowData = csvData[globalIndex];
       const templateId = selectedTemplateIds[globalIndex % selectedTemplateIds.length];
       const currentTemplate = templates.find((t: EmailTemplate) => t.id === templateId);
 
-      if (!currentTemplate) return false;
+      if (!currentTemplate) {
+        return { success: false, email: recipientLog.email, error: 'Template missing', id: recipientLog.id };
+      }
 
-      let subject = currentTemplate.subject;
-      let body = currentTemplate.body;
-
-      // Enhanced Variable Replacement with Fallbacks
       const replaceVariables = (text: string, data: any) => {
         return text.replace(/\{\{([^}]+)\}\}/g, (match, p1) => {
           const [key, fallback] = p1.split('|').map((s: string) => s.trim());
-          // Try to find the key in CSV data (case-insensitive)
           const csvKey = Object.keys(data).find(k => k.toLowerCase() === key.toLowerCase());
           const value = csvKey ? data[csvKey] : undefined;
-
           return (value !== undefined && value !== '') ? value : (fallback || match);
         });
       };
 
-      subject = replaceVariables(subject, rowData);
-      body = replaceVariables(body, rowData);
+      const subject = resolveSpintax(replaceVariables(currentTemplate.subject, rowData));
+      const trackingUrl = (target: string) => `${trackingBaseUrl || 'http://localhost:3000'}/api/click?target=${encodeURIComponent(target)}&id=${recipientLog.id}`;
 
-      subject = resolveSpintax(subject);
-      body = resolveSpintax(body) + generateFingerprint();
+      let processedBody = resolveSpintax(replaceVariables(currentTemplate.body, rowData));
+
+      // Link Injection Logic
+      processedBody = processedBody.replace(/href=["']([^"']+)["']/g, (match, url) => {
+        if (url.startsWith('http')) {
+          return `href="${trackingUrl(url)}"`;
+        }
+        return match;
+      });
+
+      // Unsubscribe Footer Injection
+      const unsubscribeLink = `${trackingBaseUrl || 'http://localhost:3000'}/api/unsubscribe?id=${recipientLog.id}`;
+      const footerHtml = `
+      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 12px; color: #aaa;">
+          <a href="${unsubscribeLink}" style="color: #aaa; text-decoration: none;">Unsubscribe</a>
+      </div>
+      `;
+
+      const body = processedBody + footerHtml + generateFingerprint();
 
       try {
         const res = await fetch('/api/send', {
@@ -269,51 +253,64 @@ export default function CampaignPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             smtpConfig: currentSmtp,
-            to: log.email,
+            to: recipientLog.email,
             subject,
             html: body,
-            trackingId: log.id,
-            baseUrl: trackingBaseUrl,
+            trackingId: recipientLog.id,
+            baseUrl: trackingBaseUrl
           }),
         });
 
         const data = await res.json();
-        setLogs(prev => {
-          const newLogs = [...prev];
-          newLogs[globalIndex] = {
-            ...newLogs[globalIndex],
-            status: data.success ? 'sent' : 'failed',
-            error: data.success ? undefined : data.message,
-            sentAt: Date.now(),
-          };
-          return newLogs;
-        });
-        return data.success;
-      } catch (error) {
-        setLogs(prev => {
-          const newLogs = [...prev];
-          newLogs[globalIndex] = { ...newLogs[globalIndex], status: 'failed', error: 'Network error' };
-          return newLogs;
-        });
-        return false;
+        return { success: data.success, email: recipientLog.email, error: data.message, id: recipientLog.id };
+      } catch (err: any) {
+        return { success: false, email: recipientLog.email, error: err.message, id: recipientLog.id };
       }
     });
 
-    const results = await Promise.all(promises);
-    const sentCount = results.filter(Boolean).length;
+    const results = await Promise.all(sendPromises);
+
+    let batchSent = 0;
+    let batchFailed = 0;
+
+    results.forEach((res, idx) => {
+      const globalIndex = startIndex + idx;
+      currentLogs[globalIndex] = {
+        ...currentLogs[globalIndex],
+        status: res.success ? 'sent' : 'failed',
+        error: res.success ? undefined : res.error,
+        sentAt: Date.now(),
+      };
+      if (res.success) batchSent++;
+      else batchFailed++;
+    });
+
+    setLogs(currentLogs);
     setProgress(prev => ({
       ...prev,
-      sent: prev.sent + sentCount,
-      failed: prev.failed + (results.length - sentCount),
+      sent: prev.sent + batchSent,
+      failed: prev.failed + batchFailed,
       current: endIndex,
     }));
 
     if (endIndex < currentLogs.length && !stopRef.current) {
-      // Randomized Jitter (+- 20%)
-      const jitter = (Math.random() * 0.4) + 0.8; // Range: 0.8 to 1.2
-      const jitteredWait = waitTime * jitter;
-      setTimeout(() => processBatch(endIndex), jitteredWait * 1000);
+      const jitter = (Math.random() * 0.4) + 0.8;
+      setTimeout(() => processBatch(endIndex), waitTime * jitter * 1000);
     } else if (!stopRef.current) {
+      const finalizeCampaign = (isStopped: boolean) => {
+        setIsSending(false);
+        addCampaignToHistory({
+          id: crypto.randomUUID(),
+          name: fileName || `Campaign ${new Date().toLocaleDateString()}`,
+          createdAt: Date.now(),
+          total: progress.total,
+          sent: progress.sent + batchSent,
+          failed: progress.failed + batchFailed,
+          status: isStopped ? 'paused' : 'completed',
+          logs: currentLogs,
+        });
+        toast.success(isStopped ? 'Campaign stopped' : 'Campaign finished!');
+      };
       finalizeCampaign(false);
     }
   };
@@ -417,9 +414,24 @@ export default function CampaignPage() {
                     </optgroup>
                   )}
                 </select>
-                {accounts.length === 0 && smtpConfigs.length === 0 && (
-                  <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 border border-amber-400/20 rounded-lg p-3">
-                    ⚠️ No accounts or relays detected. Configure infrastructure first.
+              </div>
+
+              {/* Domain Selection */}
+              <div className="space-y-4">
+                <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Authorized Domain Vector</Label>
+                <select
+                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+                  value={selectedDomainId}
+                  onChange={(e) => setSelectedDomainId(e.target.value)}
+                >
+                  <option value="" className="bg-slate-900">Default (Direct Tunnel)</option>
+                  {domains.map((d: Domain) => (
+                    <option key={d.id} value={d.id} className="bg-slate-900 text-slate-200">{d.name} ({d.status === 'active' ? 'Authorized' : 'Pending'})</option>
+                  ))}
+                </select>
+                {domains.length === 0 && (
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">
+                    No authorized domains. Using direct server identity.
                   </p>
                 )}
               </div>
