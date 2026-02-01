@@ -1,19 +1,33 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import geoip from 'geoip-lite';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const TRACKING_FILE = path.join(DATA_DIR, 'tracking.json');
 
-// Ensure data directory and file exist
-if (!fs.existsSync(DATA_DIR)) {
-    console.log('Creating data directory at:', DATA_DIR);
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+// Helper to ensure data directory and file exist (called at runtime, not build time)
+function ensureDataFile() {
+    if (!fs.existsSync(DATA_DIR)) {
+        console.log('Creating data directory at:', DATA_DIR);
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(TRACKING_FILE)) {
+        console.log('Creating tracking file at:', TRACKING_FILE);
+        fs.writeFileSync(TRACKING_FILE, JSON.stringify({}));
+    }
 }
-if (!fs.existsSync(TRACKING_FILE)) {
-    console.log('Creating tracking file at:', TRACKING_FILE);
-    fs.writeFileSync(TRACKING_FILE, JSON.stringify({}));
+
+// Helper to safely get geo location
+async function getGeoLocation(ip: string): Promise<{ city?: string; country?: string; region?: string } | null> {
+    try {
+        // Dynamic import to avoid build-time issues with geoip-lite data files
+        const geoip = await import('geoip-lite');
+        const geo = geoip.default.lookup(ip);
+        return geo ? { city: geo.city, country: geo.country, region: geo.region } : null;
+    } catch (error) {
+        console.error('GeoIP lookup failed:', error);
+        return null;
+    }
 }
 
 export async function GET(request: Request) {
@@ -22,12 +36,13 @@ export async function GET(request: Request) {
 
     if (id) {
         try {
+            ensureDataFile();
             const data = JSON.parse(fs.readFileSync(TRACKING_FILE, 'utf8'));
             const existing = data[id] || {};
 
             const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
             const cleanIp = ip.split(',')[0].trim();
-            const geo = geoip.lookup(cleanIp);
+            const geo = await getGeoLocation(cleanIp);
             const location = geo ? `${geo.city || ''}, ${geo.country || ''}`.replace(/^, /, '') : 'Unknown Location';
 
             data[id] = {
@@ -37,7 +52,7 @@ export async function GET(request: Request) {
                 lastOpenedAt: Date.now(),
                 ip: cleanIp,
                 userAgent: request.headers.get('user-agent') || 'unknown',
-                location: geo ? { city: geo.city, country: geo.country, region: geo.region } : null,
+                location: geo,
                 locationString: location
             };
             fs.writeFileSync(TRACKING_FILE, JSON.stringify(data, null, 2));
