@@ -70,8 +70,13 @@ export default function CampaignPage() {
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Restore campaign state on mount
+  // Restore campaign state on mount
+  const hasRestored = useRef(false);
+
   useEffect(() => {
-    if (activeCampaign) {
+    if (activeCampaign && !hasRestored.current) {
+      hasRestored.current = true;
+
       setSelectedSmtpId(activeCampaign.selectedSmtpId);
       setSelectedDomainId(activeCampaign.selectedDomainId);
       setSelectedTemplateIds(activeCampaign.selectedTemplateIds);
@@ -95,10 +100,10 @@ export default function CampaignPage() {
         // Campaign is paused, enable edit mode
         setIsEditMode(true);
       }
-    } else if (typeof window !== 'undefined') {
+    } else if (typeof window !== 'undefined' && !activeCampaign && !hasRestored.current) {
       setTrackingBaseUrl(window.location.origin);
     }
-  }, []); // Run only on mount
+  }, [activeCampaign]); // Run when activeCampaign loads
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !trackingBaseUrl) {
