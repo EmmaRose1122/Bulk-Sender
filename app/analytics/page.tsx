@@ -73,11 +73,12 @@ export default function AnalyticsPage() {
     const syncData = async () => {
         setSyncing(true);
         try {
-            const res = await fetch('/api/reports/sync');
-            const { tracking } = await res.json();
+            const res = await fetch('/api/campaign-status');
+            const trackingData = await res.json();
 
             // Update global context with fresh tracking data
-            updateCampaignStatus(tracking);
+            updateCampaignStatus(trackingData);
+
             let totalOpens = 0;
             let totalClicks = 0;
             let totalUnsubs = 0;
@@ -85,18 +86,19 @@ export default function AnalyticsPage() {
             let sentCount = 0;
 
             campaignHistory.forEach(c => {
-                sentCount += c.sent;
-                totalBounces += c.failed;
+                sentCount += c.sent || 0;
+                totalBounces += c.failed || 0;
+
                 c.logs?.forEach(log => {
-                    const serverData = tracking[log.id];
-                    if (serverData) {
-                        if (serverData.opened) totalOpens++;
-                        if (serverData.clicked) totalClicks++;
-                        if (serverData.unsubscribed) totalUnsubs++;
-                    } else {
-                        // Fallback to local data if sync misses
-                        if (log.opened) totalOpens++;
-                    }
+                    // Check server data first, then fallback to local
+                    const serverData = trackingData[log.id];
+                    const hasOpened = serverData?.opened || log.opened;
+                    const hasClicked = serverData?.clicked || log.clicked;
+                    const hasUnsubscribed = serverData?.unsubscribed || log.unsubscribed;
+
+                    if (hasOpened) totalOpens++;
+                    if (hasClicked) totalClicks++;
+                    if (hasUnsubscribed) totalUnsubs++;
                 });
             });
 
@@ -108,12 +110,27 @@ export default function AnalyticsPage() {
                 totalSent: sentCount
             });
         } catch (e) {
-            console.error(e);
+            console.error('Sync error:', e);
         } finally {
             setSyncing(false);
         }
     };
 
+    // Initial sync on mount
+    useEffect(() => {
+        syncData();
+    }, []);
+
+    // Auto-sync every 5 seconds for real-time updates
+    useEffect(() => {
+        const interval = setInterval(() => {
+            syncData();
+        }, 5000); // 5 seconds
+
+        return () => clearInterval(interval);
+    }, [campaignHistory]);
+
+    // Re-sync when campaign history changes
     useEffect(() => {
         syncData();
     }, [campaignHistory]);
@@ -127,10 +144,16 @@ export default function AnalyticsPage() {
                     <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Mission Intelligence</h1>
                     <p className="text-slate-500 font-medium mt-1">Deep analysis of past campaign performance and metrics.</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={syncData} disabled={syncing}>
-                    {syncing ? <Activity className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                    Sync Data
-                </Button>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
+                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Live Data • Auto-sync 5s</span>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={syncData} disabled={syncing}>
+                        {syncing ? <Activity className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                        Sync Now
+                    </Button>
+                </div>
             </header>
 
             {/* Top Stats Row */}
@@ -210,7 +233,10 @@ export default function AnalyticsPage() {
 
             {/* Leads Table Section */}
             <div className="space-y-4">
-                <h2 className="text-xl font-black text-slate-900">Recent Leads Activity</h2>
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-black text-slate-900">Recent Leads Activity</h2>
+                    <span className="text-xs font-bold text-slate-400">Last 50 emails</span>
+                </div>
                 <div className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-100">
@@ -224,7 +250,9 @@ export default function AnalyticsPage() {
                         <tbody className="divide-y divide-slate-100">
                             {campaignHistory
                                 .flatMap(c => c.logs || [])
+                                .filter(log => log.status !== 'pending') // Only show sent/failed emails
                                 .sort((a, b) => (b.openedAt || b.sentAt || 0) - (a.openedAt || a.sentAt || 0))
+                                .slice(0, 50) // Limit to 50 most recent
                                 .map((log, i) => (
                                     <tr key={log.id || i} className="hover:bg-slate-50 transition-colors">
                                         <td className="p-4 font-bold text-slate-700">
@@ -273,9 +301,9 @@ export default function AnalyticsPage() {
                                         </td>
                                     </tr>
                                 ))}
-                            {campaignHistory.length === 0 && (
+                            {(campaignHistory.length === 0 || campaignHistory.flatMap(c => c.logs || []).filter(log => log.status !== 'pending').length === 0) && (
                                 <tr>
-                                    <td colSpan={4} className="p-8 text-center text-slate-400 text-sm italic">No data available. Run a campaign to populate intelligence.</td>
+                                    <td colSpan={4} className="p-8 text-center text-slate-400 text-sm italic">No emails sent yet. Run a campaign to populate intelligence.</td>
                                 </tr>
                             )}
                         </tbody>
