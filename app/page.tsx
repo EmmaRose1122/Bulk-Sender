@@ -284,7 +284,14 @@ export default function CampaignPage() {
       </div>
       `;
 
-      const body = processedBody + footerHtml + generateFingerprint();
+      let body = processedBody;
+      const extras = footerHtml + generateFingerprint();
+
+      if (body.includes('</body>')) {
+        body = body.replace('</body>', `${extras}</body>`);
+      } else {
+        body += extras;
+      }
 
       try {
         const res = await fetch('/api/send', {
