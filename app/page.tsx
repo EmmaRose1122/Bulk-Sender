@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
-import { Trash2, Plus, Eye, Save, Search, Layout, FileCode, CheckCircle2, AlertCircle, ShieldCheck, Shield, MessageSquare, ListTodo, Users, ShieldAlert, BarChart3, Settings, Play, Square, Pause, ChevronDown, Activity, Zap, CheckCircle, XCircle, Clock, Mail, Globe } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, Search, Layout, FileCode, CheckCircle2, AlertCircle, ShieldCheck, Shield, MessageSquare, ListTodo, Users, ShieldAlert, BarChart3, Settings, Play, Square, Pause, ChevronDown, Activity, Zap, CheckCircle, XCircle, Clock, Mail, Globe, HelpCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { EmailLog, AccountProfile, EmailTemplate, Domain } from '../types/index';
@@ -63,6 +63,7 @@ export default function CampaignPage() {
   const [progress, setProgress] = useState({ sent: 0, failed: 0, total: 0, current: 0 });
   const [fileName, setFileName] = useState<string>('');
   const [isManualInputOpen, setIsManualInputOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [manualInputText, setManualInputText] = useState('');
   const [trackingBaseUrl, setTrackingBaseUrl] = useState<string>('');
   const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
@@ -612,14 +613,19 @@ export default function CampaignPage() {
           <Card className="p-8 glass-dark border-none shadow-2xl overflow-hidden relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
 
-            <div className="flex items-center gap-4 mb-10">
-              <div className="h-12 w-12 rounded-2xl gradient-primary flex items-center justify-center text-white shadow-xl shadow-indigo-500/20">
-                <ListTodo className="h-6 w-6" />
+            <div className="flex items-center justify-between mb-10">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl gradient-primary flex items-center justify-center text-white shadow-xl shadow-indigo-500/20">
+                  <ListTodo className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-white tracking-tight">Campaign Blueprint</h2>
+                  <p className="text-slate-400 text-xs font-medium">Configure target audience and delivery parameters.</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-2xl font-black text-white tracking-tight">Campaign Blueprint</h2>
-                <p className="text-slate-400 text-xs font-medium">Configure target audience and delivery parameters.</p>
-              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsHelpOpen(true)} className="text-slate-500 hover:text-indigo-400 hover:bg-slate-800/50 rounded-xl">
+                <HelpCircle className="h-5 w-5" />
+              </Button>
             </div>
 
             <div className="space-y-8">
@@ -894,6 +900,45 @@ export default function CampaignPage() {
           </div>
           <DialogFooter>
             <Button onClick={handleManualSubmit} className="h-12 px-10 gradient-primary text-white font-black uppercase tracking-widest rounded-xl">Commit Array</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+        <DialogContent className="glass-dark border-none shadow-2xl p-8 max-w-2xl rounded-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
+                <Settings className="h-4 w-4 text-white" />
+              </div>
+              Campaign Control Features
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">Advanced workflow controls for managing active campaigns.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 text-slate-300">
+            <div className="space-y-2">
+              <h3 className="font-bold text-white flex items-center gap-2"><Pause className="h-4 w-4 text-amber-500" /> Pause & Edit</h3>
+              <p className="text-sm leading-relaxed">Click "Pause Campaign" at any time. Sending stops immediately, preserving progress. The interface enters <strong>Edit Mode</strong>, unlocking all settings.</p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-white flex items-center gap-2"><Play className="h-4 w-4 text-emerald-500" /> Dynamic Adjustments</h3>
+              <p className="text-sm leading-relaxed">While paused, you can safely:</p>
+              <ul className="text-sm space-y-1 list-disc pl-5 text-slate-400">
+                <li>Switch SMTP Accounts (e.g. if daily limit reached)</li>
+                <li>Change Templates (A/B testing mid-stream)</li>
+                <li>Add/Remove Recipients (Upload new CSV)</li>
+                <li>Adjust Speed (Batch Size & Wait Time)</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-white flex items-center gap-2"><Zap className="h-4 w-4 text-indigo-500" /> Resume</h3>
+              <p className="text-sm leading-relaxed">Click "Resume Campaign" to continue exactly where you left off, applying your <strong>new settings</strong> to the remaining recipients.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsHelpOpen(false)} className="h-10 px-6 gradient-primary text-white font-bold rounded-xl">Got it</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
