@@ -66,6 +66,7 @@ export default function CampaignPage() {
   const [manualInputText, setManualInputText] = useState('');
   const [trackingBaseUrl, setTrackingBaseUrl] = useState<string>('');
   const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Restore campaign state on mount
   useEffect(() => {
@@ -86,8 +87,12 @@ export default function CampaignPage() {
       // Resume campaign if it was sending
       if (activeCampaign.isSending) {
         stopRef.current = false;
+        setIsEditMode(false);
         toast.info('Resuming campaign...');
         processBatch(activeCampaign.currentIndex);
+      } else {
+        // Campaign is paused, enable edit mode
+        setIsEditMode(true);
       }
     } else if (typeof window !== 'undefined') {
       setTrackingBaseUrl(window.location.origin);
@@ -410,6 +415,7 @@ export default function CampaignPage() {
   const stopCampaign = () => {
     stopRef.current = true;
     setIsSending(false);
+    setIsEditMode(true);
 
     // Update active campaign to stopped state
     if (activeCampaign) {
@@ -423,7 +429,58 @@ export default function CampaignPage() {
       });
     }
 
-    toast.info('Campaign stopping...');
+    toast.info('Campaign paused - You can now edit settings');
+  };
+
+  const resumeCampaign = () => {
+    if (!selectedSmtpId) { toast.error('Select an account'); return; }
+    if (selectedTemplateIds.length === 0) { toast.error('Select templates'); return; }
+    if (logs.length === 0) { toast.error('No recipients found'); return; }
+
+    stopRef.current = false;
+    setIsSending(true);
+    setIsEditMode(false);
+
+    // Update active campaign with new settings
+    if (activeCampaign) {
+      updateActiveCampaign({
+        selectedSmtpId,
+        selectedDomainId,
+        selectedTemplateIds,
+        batchSize,
+        waitTime,
+        csvData,
+        logs,
+        trackingBaseUrl,
+        isSending: true,
+      });
+    }
+
+    // Update history
+    if (currentCampaignId) {
+      updateCampaignInHistory(currentCampaignId, {
+        status: 'sending',
+        total: logs.length,
+      });
+    }
+
+    toast.success('Resuming campaign with updated settings...');
+    processBatch(progress.current);
+  };
+
+  const clearCampaign = () => {
+    setActiveCampaign(null);
+    setCurrentCampaignId(null);
+    setIsSending(false);
+    setIsEditMode(false);
+    setLogs([]);
+    setCsvData([]);
+    setProgress({ sent: 0, failed: 0, total: 0, current: 0 });
+    setFileName('');
+    setSelectedSmtpId('');
+    setSelectedDomainId('');
+    setSelectedTemplateIds([]);
+    toast.success('Campaign cleared - Ready for new campaign');
   };
 
   return (
@@ -447,7 +504,7 @@ export default function CampaignPage() {
         </div>
       </header>
 
-      {/* Campaign Restored Banner */}
+      {/* Campaign Status Banner */}
       {activeCampaign && isSending && (
         <Card className="p-4 bg-indigo-500/10 border-indigo-500/20 border-2 animate-in slide-in-from-top-4 duration-500">
           <div className="flex items-center gap-3">
@@ -455,8 +512,8 @@ export default function CampaignPage() {
               <Activity className="h-5 w-5 animate-pulse" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-black text-indigo-700">Campaign Restored</h3>
-              <p className="text-xs text-indigo-600 font-medium">Your campaign is continuing from where it left off. ({progress.current}/{progress.total} processed)</p>
+              <h3 className="text-sm font-black text-indigo-700">Campaign Running</h3>
+              <p className="text-xs text-indigo-600 font-medium">Continuing from where it left off. ({progress.current}/{progress.total} processed)</p>
             </div>
             <Button
               variant="outline"
@@ -466,6 +523,47 @@ export default function CampaignPage() {
             >
               <Pause className="mr-1 h-3 w-3" /> Pause
             </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Paused Campaign Banner - Edit Mode */}
+      {activeCampaign && !isSending && isEditMode && (
+        <Card className="p-6 bg-amber-500/10 border-amber-500/20 border-2 animate-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-amber-500 flex items-center justify-center text-white">
+              <Settings className="h-6 w-6" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-black text-amber-700 flex items-center gap-2">
+                Campaign Paused - Edit Mode Active
+                <span className="text-xs font-bold px-2 py-0.5 bg-amber-500/20 rounded-full">EDITABLE</span>
+              </h3>
+              <p className="text-xs text-amber-600 font-medium mt-1">
+                Progress: {progress.current}/{progress.total} emails processed • {progress.sent} sent • {progress.failed} failed
+              </p>
+              <p className="text-[10px] text-amber-600/80 font-medium mt-1">
+                You can modify account, templates, batch size, or add/remove recipients below. Click Resume when ready to continue.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resumeCampaign}
+                className="border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 font-bold"
+              >
+                <Play className="mr-1 h-3 w-3" /> Resume
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearCampaign}
+                className="border-red-500/30 text-red-600 hover:bg-red-500/10 font-bold"
+              >
+                <Trash2 className="mr-1 h-3 w-3" /> Clear
+              </Button>
+            </div>
           </div>
         </Card>
       )}
@@ -649,13 +747,41 @@ export default function CampaignPage() {
               </div>
 
               <div className="pt-10 flex gap-4">
-                {!isSending ? (
-                  <Button className="flex-1 h-14 gradient-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20 hover:scale-[1.02] transition-all" onClick={startCampaign} disabled={logs.length === 0}>
+                {isEditMode && activeCampaign ? (
+                  // Paused campaign - show Resume and Clear
+                  <>
+                    <Button
+                      className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-500/20 hover:scale-[1.02] transition-all"
+                      onClick={resumeCampaign}
+                      disabled={logs.length === 0}
+                    >
+                      <Play className="mr-2 h-5 w-5" /> Resume Campaign
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-14 px-8 border-2 border-red-500/30 text-red-600 hover:bg-red-500/10 font-black uppercase tracking-widest rounded-2xl"
+                      onClick={clearCampaign}
+                    >
+                      <Trash2 className="mr-2 h-5 w-5" /> Clear & Start Fresh
+                    </Button>
+                  </>
+                ) : !isSending ? (
+                  // New campaign - show Launch
+                  <Button
+                    className="flex-1 h-14 gradient-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20 hover:scale-[1.02] transition-all"
+                    onClick={startCampaign}
+                    disabled={logs.length === 0}
+                  >
                     <Play className="mr-2 h-5 w-5" /> Launch Operation
                   </Button>
                 ) : (
-                  <Button variant="destructive" className="flex-1 h-14 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-red-500/20" onClick={stopCampaign}>
-                    <Pause className="mr-2 h-5 w-5" /> Abort Sequence
+                  // Running campaign - show Pause
+                  <Button
+                    variant="destructive"
+                    className="flex-1 h-14 bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-amber-500/20"
+                    onClick={stopCampaign}
+                  >
+                    <Pause className="mr-2 h-5 w-5" /> Pause Campaign
                   </Button>
                 )}
               </div>
