@@ -121,7 +121,9 @@ export default function CampaignPage() {
     if (selectedTemplateIds.length > 0) {
       const template = templates.find((t: EmailTemplate) => t.id === selectedTemplateIds[0]);
       if (template) {
-        setDelivScore(analyzeDeliverability(template.subject, template.body));
+        // Simulate auto-injected footer for accurate analysis
+        const simulatedBody = template.body + ' <footer>Unsubscribe</footer>';
+        setDelivScore(analyzeDeliverability(template.subject, simulatedBody));
       }
     } else {
       setDelivScore(null);
