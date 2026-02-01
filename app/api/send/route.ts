@@ -33,6 +33,7 @@ export async function POST(request: Request) {
             );
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const transportOptions: any = {
             host: smtpConfig.host,
             port: smtpConfig.port,
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
             console.log('Verifying SMTP connection...');
             await transporter.verify();
             console.log('SMTP connection verified successfully');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (verifyError: any) {
             console.error('SMTP Verify Error:', verifyError);
 
@@ -119,6 +121,7 @@ export async function POST(request: Request) {
         const trackingUrl = body.baseUrl || request.headers.get('origin') || 'http://localhost:3000';
         const unsubscribeUrl = `${trackingUrl}/api/unsubscribe?id=${trackingId || 'general'}`;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const headers: any = {
             'Precedence': 'bulk',
             'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:${senderEmail}?subject=unsubscribe>`,
@@ -140,6 +143,7 @@ export async function POST(request: Request) {
         console.log('Email sent successfully:', info.messageId);
         return NextResponse.json({ success: true, messageId: info.messageId });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error('=== Send API Error ===');
         console.error('Error message:', error.message);

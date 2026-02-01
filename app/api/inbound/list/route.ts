@@ -13,6 +13,7 @@ export async function GET() {
 
         const data = JSON.parse(fs.readFileSync(INBOUND_FILE, 'utf8'));
         return NextResponse.json({ success: true, messages: data });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }

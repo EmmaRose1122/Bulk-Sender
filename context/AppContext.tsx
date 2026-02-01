@@ -11,7 +11,9 @@ interface ActiveCampaignState {
     selectedTemplateIds: string[];
     batchSize: number;
     waitTime: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     csvData: any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     logs: any[];
     progress: { sent: number; failed: number; total: number; current: number };
     fileName: string;
@@ -36,6 +38,7 @@ interface AppContextType {
     campaignHistory: Campaign[];
     addCampaignToHistory: (campaign: Campaign) => void;
     updateCampaignInHistory: (id: string, updates: Partial<Campaign>) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateCampaignStatus: (trackingData: any) => void;
     clearHistory: () => void;
 
@@ -119,6 +122,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         setCampaignHistory(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateCampaignStatus = (trackingData: any) => {
         setCampaignHistory((current: Campaign[]) => {
             return current.map(campaign => {

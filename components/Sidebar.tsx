@@ -13,7 +13,7 @@ export function Sidebar() {
             <div className="flex h-16 items-center px-6 border-b border-slate-800/50">
                 <Link href="/" className="flex items-center gap-3 font-extrabold text-white text-xl tracking-tight group">
                     <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform duration-300">
-                        <span className="text-lg">⚡</span>
+                        <span className="text-lg" role="img" aria-label="lightning">⚡</span>
                     </div>
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
                         BulkSender

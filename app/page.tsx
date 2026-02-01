@@ -163,6 +163,7 @@ export default function CampaignPage() {
       skipEmptyLines: true,
       complete: (results) => {
         setCsvData(results.data);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newLogs: EmailLog[] = results.data.map((row: any) => ({
           id: crypto.randomUUID(),
           email: row.email || row.Email || '',

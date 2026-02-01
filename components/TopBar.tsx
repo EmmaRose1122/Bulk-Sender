@@ -72,7 +72,7 @@ export function TopBar() {
                                         <Bell className="h-4 w-4" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">Campaign "Flash Sale" completed</p>
+                                        <p className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">Campaign &quot;Flash Sale&quot; completed</p>
                                         <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-wider">Just now</p>
                                     </div>
                                 </div>

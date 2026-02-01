@@ -248,6 +248,7 @@ export default function TemplatesPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="p-8 max-h-[50vh] overflow-y-auto bg-white">
+                            {/* eslint-disable-next-line react/no-danger */}
                             <div className="prose prose-sm max-w-none text-slate-700" dangerouslySetInnerHTML={{ __html: previewTemplate.body }} />
                         </CardContent>
                         <CardFooter className="p-8 border-t border-slate-100 flex justify-end">
