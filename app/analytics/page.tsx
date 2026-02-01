@@ -130,10 +130,10 @@ export default function AnalyticsPage() {
         return () => clearInterval(interval);
     }, [campaignHistory]);
 
-    // Re-sync when campaign history changes
-    useEffect(() => {
-        syncData();
-    }, [campaignHistory]);
+    // Removed infinite loop causing useEffect
+    // useEffect(() => {
+    //    syncData();
+    // }, [campaignHistory]);
 
     const openRate = stats.totalSent > 0 ? (stats.opens / stats.totalSent) * 100 : 0;
 

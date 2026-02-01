@@ -620,8 +620,9 @@ export default function CampaignPage() {
               <div className="space-y-4">
                 <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Source Account</Label>
                 <select
-                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                   value={selectedSmtpId}
+                  disabled={isSending}
                   onChange={(e) => setSelectedSmtpId(e.target.value)}
                 >
                   <option value="" className="bg-slate-900">Select Transmission Vector</option>
@@ -646,8 +647,9 @@ export default function CampaignPage() {
               <div className="space-y-4">
                 <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Authorized Domain Vector</Label>
                 <select
-                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                   value={selectedDomainId}
+                  disabled={isSending}
                   onChange={(e) => setSelectedDomainId(e.target.value)}
                 >
                   <option value="" className="bg-slate-900">Default (Direct Tunnel)</option>
@@ -667,10 +669,10 @@ export default function CampaignPage() {
                 <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Target Audience</Label>
                 <div className="flex flex-wrap gap-4">
                   <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" ref={fileInputRef} />
-                  <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="h-12 px-6 rounded-xl border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700 transition-all font-bold">
+                  <Button onClick={() => fileInputRef.current?.click()} disabled={isSending} variant="outline" className="h-12 px-6 rounded-xl border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                     <Users className="mr-2 h-4 w-4 text-indigo-400" /> Upload CSV
                   </Button>
-                  <Button onClick={() => setIsManualInputOpen(true)} variant="outline" className="h-12 px-6 rounded-xl border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700 transition-all font-bold">
+                  <Button onClick={() => setIsManualInputOpen(true)} disabled={isSending} variant="outline" className="h-12 px-6 rounded-xl border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                     <MessageSquare className="mr-2 h-4 w-4 text-indigo-400" /> Manual
                   </Button>
                   {csvData.length > 0 && (
@@ -687,8 +689,9 @@ export default function CampaignPage() {
                 <div className="relative">
                   <select
                     multiple
-                    className="w-full h-40 bg-slate-800/30 border-2 border-slate-700/50 rounded-2xl p-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+                    className="w-full h-40 bg-slate-800/30 border-2 border-slate-700/50 rounded-2xl p-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                     value={selectedTemplateIds}
+                    disabled={isSending}
                     onChange={(e) => setSelectedTemplateIds(Array.from(e.target.selectedOptions, o => o.value))}
                   >
                     {templates.map((t: EmailTemplate) => (
@@ -733,16 +736,16 @@ export default function CampaignPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
                   <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Tracking Base URL</Label>
-                  <Input value={trackingBaseUrl} onChange={(e: any) => setTrackingBaseUrl(e.target.value)} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" placeholder="https://..." />
+                  <Input value={trackingBaseUrl} disabled={isSending} onChange={(e: any) => setTrackingBaseUrl(e.target.value)} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed" placeholder="https://..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Batch</Label>
-                    <Input type="number" value={batchSize} onChange={(e: any) => setBatchSize(Number(e.target.value))} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" />
+                    <Input type="number" value={batchSize} disabled={isSending} onChange={(e: any) => setBatchSize(Number(e.target.value))} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed" />
                   </div>
                   <div className="space-y-3">
                     <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Wait (s)</Label>
-                    <Input type="number" value={waitTime} onChange={(e: any) => setWaitTime(Number(e.target.value))} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl" />
+                    <Input type="number" value={waitTime} disabled={isSending} onChange={(e: any) => setWaitTime(Number(e.target.value))} className="bg-slate-800/30 border-2 border-slate-700/50 text-slate-200 h-12 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed" />
                   </div>
                 </div>
               </div>
