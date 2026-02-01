@@ -35,6 +35,7 @@ export async function POST(request: Request) {
         fs.writeFileSync(INBOUND_FILE, JSON.stringify(limitedData, null, 2));
 
         return NextResponse.json({ success: true, message: 'Transmission intercepted' });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }

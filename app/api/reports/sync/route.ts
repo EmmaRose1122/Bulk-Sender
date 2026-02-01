@@ -13,7 +13,8 @@ export async function GET() {
         const fileContent = fs.readFileSync(TRACKING_FILE, 'utf8');
         const data = fileContent ? JSON.parse(fileContent) : {};
         return NextResponse.json({ success: true, tracking: data });
-    } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
         console.error('Sync Error:', error);
         return NextResponse.json({ success: false, error: 'Failed to sync tracking data' }, { status: 500 });
     }

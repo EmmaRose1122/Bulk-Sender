@@ -11,7 +11,8 @@ export async function GET() {
         }
         const data = JSON.parse(fs.readFileSync(TRACKING_FILE, 'utf8'));
         return NextResponse.json(data);
-    } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
         return NextResponse.json({ error: 'Failed to read tracking data' }, { status: 500 });
     }
 }

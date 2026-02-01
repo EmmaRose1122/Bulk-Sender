@@ -17,6 +17,7 @@ export async function GET() {
     try {
         const data = JSON.parse(fs.readFileSync(SECURITY_FILE, 'utf8'));
         return NextResponse.json({ success: true, config: data });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
         fs.writeFileSync(SECURITY_FILE, JSON.stringify(data, null, 2));
 
         return NextResponse.json({ success: true, message: 'Security shield synchronized' });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }

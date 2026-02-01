@@ -28,7 +28,8 @@ export async function GET(request: Request) {
                 userAgent: request.headers.get('user-agent') || 'unknown'
             };
             fs.writeFileSync(TRACKING_FILE, JSON.stringify(data, null, 2));
-        } catch (error) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
             console.error('Click Tracking Error:', error);
         }
     }

@@ -19,7 +19,8 @@ export async function GET(request: Request) {
             };
             fs.writeFileSync(TRACKING_FILE, JSON.stringify(data, null, 2));
             console.log(`User unsubscribed: ${id}`);
-        } catch (error) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
             console.error('Unsubscribe Error:', error);
         }
     }
@@ -54,7 +55,8 @@ export async function POST(request: Request) {
             };
             fs.writeFileSync(TRACKING_FILE, JSON.stringify(data, null, 2));
             console.log(`One-click Unsubscribe: ${id}`);
-        } catch (error) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
             console.error('Unsubscribe POST Error:', error);
         }
     }

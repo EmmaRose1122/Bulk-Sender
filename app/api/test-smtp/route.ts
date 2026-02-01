@@ -20,6 +20,7 @@ export async function POST(request: Request) {
         const body = await request.json();
         const config: SmtpConfig = body;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const transportOptions: any = {
             host: config.host,
             port: config.port,
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
         await transporter.verify();
 
         return NextResponse.json({ success: true, message: 'Connection successful' });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error('SMTP Test Error:', error);
 
