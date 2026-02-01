@@ -4,6 +4,22 @@ import React, { createContext, useContext, useEffect } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { SmtpConfig, EmailTemplate, Campaign, AccountProfile, Domain, InboundMessage, SecurityConfig } from '../types/index';
 
+interface ActiveCampaignState {
+    id: string;
+    selectedSmtpId: string;
+    selectedDomainId: string;
+    selectedTemplateIds: string[];
+    batchSize: number;
+    waitTime: number;
+    csvData: any[];
+    logs: any[];
+    progress: { sent: number; failed: number; total: number; current: number };
+    fileName: string;
+    trackingBaseUrl: string;
+    isSending: boolean;
+    currentIndex: number;
+}
+
 interface AppContextType {
     smtpConfigs: SmtpConfig[];
     addSmtpConfig: (config: SmtpConfig) => void;
@@ -39,6 +55,10 @@ interface AppContextType {
 
     securityConfig: SecurityConfig;
     updateSecurityConfig: (config: SecurityConfig) => void;
+
+    activeCampaign: ActiveCampaignState | null;
+    setActiveCampaign: (campaign: ActiveCampaignState | null) => void;
+    updateActiveCampaign: (updates: Partial<ActiveCampaignState>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -52,6 +72,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     const [domains, setDomains] = useLocalStorage<Domain[]>('domain_profiles', []);
     const [inboundMessages, setInboundMessages] = useLocalStorage<InboundMessage[]>('inbound_hub', []);
     const [securityConfig, setSecurityConfig] = useLocalStorage<SecurityConfig>('security_settings', { ipAllowlist: [] });
+    const [activeCampaign, setActiveCampaign] = useLocalStorage<ActiveCampaignState | null>('active_campaign', null);
 
     // Ensure defaultSmtpId is valid
     useEffect(() => {
@@ -165,6 +186,10 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         setSecurityConfig(config);
     };
 
+    const updateActiveCampaign = (updates: Partial<ActiveCampaignState>) => {
+        setActiveCampaign(prev => prev ? { ...prev, ...updates } : null);
+    };
+
     return (
         <AppContext.Provider
             value={{
@@ -196,6 +221,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
                 clearInbound,
                 securityConfig,
                 updateSecurityConfig,
+                activeCampaign,
+                setActiveCampaign,
+                updateActiveCampaign,
             }}
         >
             {children}

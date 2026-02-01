@@ -41,7 +41,7 @@ const StatCard = ({ title, value, icon, description, trend }: StatCardProps) => 
 );
 
 export default function CampaignPage() {
-  const { accounts, templates, addCampaignToHistory, updateCampaignInHistory, smtpConfigs, domains, updateCampaignStatus } = useAppContext();
+  const { accounts, templates, addCampaignToHistory, updateCampaignInHistory, smtpConfigs, domains, updateCampaignStatus, activeCampaign, setActiveCampaign, updateActiveCampaign } = useAppContext();
 
   // Campaign Configuration
   const [selectedSmtpId, setSelectedSmtpId] = useState<string>('');
@@ -67,11 +67,38 @@ export default function CampaignPage() {
   const [trackingBaseUrl, setTrackingBaseUrl] = useState<string>('');
   const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
 
+  // Restore campaign state on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (activeCampaign) {
+      setSelectedSmtpId(activeCampaign.selectedSmtpId);
+      setSelectedDomainId(activeCampaign.selectedDomainId);
+      setSelectedTemplateIds(activeCampaign.selectedTemplateIds);
+      setBatchSize(activeCampaign.batchSize);
+      setWaitTime(activeCampaign.waitTime);
+      setCsvData(activeCampaign.csvData);
+      setLogs(activeCampaign.logs);
+      setProgress(activeCampaign.progress);
+      setFileName(activeCampaign.fileName);
+      setTrackingBaseUrl(activeCampaign.trackingBaseUrl);
+      setCurrentCampaignId(activeCampaign.id);
+      setIsSending(activeCampaign.isSending);
+
+      // Resume campaign if it was sending
+      if (activeCampaign.isSending) {
+        stopRef.current = false;
+        toast.info('Resuming campaign...');
+        processBatch(activeCampaign.currentIndex);
+      }
+    } else if (typeof window !== 'undefined') {
       setTrackingBaseUrl(window.location.origin);
     }
-  }, []);
+  }, []); // Run only on mount
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !trackingBaseUrl) {
+      setTrackingBaseUrl(window.location.origin);
+    }
+  }, [trackingBaseUrl]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stopRef = useRef(false);
@@ -204,6 +231,7 @@ export default function CampaignPage() {
     if (!currentSmtp) {
       toast.error('Transmission vector lost. Neutralizing campaign.');
       setIsSending(false);
+      setActiveCampaign(null);
       return;
     }
 
@@ -291,21 +319,29 @@ export default function CampaignPage() {
     });
 
     setLogs(currentLogs);
-    setProgress(prev => ({
-      ...prev,
-      sent: prev.sent + batchSent,
-      failed: prev.failed + batchFailed,
+    const newProgress = {
+      ...progress,
+      sent: progress.sent + batchSent,
+      failed: progress.failed + batchFailed,
       current: endIndex,
-    }));
+    };
+    setProgress(newProgress);
 
     // Persist batch progress to history immediately
     if (currentCampaignId) {
       updateCampaignInHistory(currentCampaignId, {
-        sent: startIndex + batchSent, // Cumulative
-        failed: (progress.failed || 0) + batchFailed,
+        sent: progress.sent + batchSent,
+        failed: progress.failed + batchFailed,
         logs: currentLogs
       });
     }
+
+    // Save current state to activeCampaign
+    updateActiveCampaign({
+      logs: currentLogs,
+      progress: newProgress,
+      currentIndex: endIndex,
+    });
 
     if (endIndex < currentLogs.length && !stopRef.current) {
       const jitter = (Math.random() * 0.4) + 0.8;
@@ -321,6 +357,8 @@ export default function CampaignPage() {
             logs: currentLogs,
           });
         }
+        // Clear active campaign when done
+        setActiveCampaign(null);
         toast.success(isStopped ? 'Campaign stopped' : 'Campaign finished!');
       };
       finalizeCampaign(false);
@@ -349,12 +387,42 @@ export default function CampaignPage() {
       logs: logs
     });
 
+    // Save to activeCampaign for persistence
+    setActiveCampaign({
+      id: campaignId,
+      selectedSmtpId,
+      selectedDomainId,
+      selectedTemplateIds,
+      batchSize,
+      waitTime,
+      csvData,
+      logs,
+      progress: { sent: 0, failed: 0, total: logs.length, current: 0 },
+      fileName,
+      trackingBaseUrl,
+      isSending: true,
+      currentIndex: 0,
+    });
+
     processBatch(0);
   };
 
   const stopCampaign = () => {
     stopRef.current = true;
     setIsSending(false);
+
+    // Update active campaign to stopped state
+    if (activeCampaign) {
+      updateActiveCampaign({ isSending: false });
+    }
+
+    // Update history
+    if (currentCampaignId) {
+      updateCampaignInHistory(currentCampaignId, {
+        status: 'paused',
+      });
+    }
+
     toast.info('Campaign stopping...');
   };
 
@@ -378,6 +446,29 @@ export default function CampaignPage() {
           </div>
         </div>
       </header>
+
+      {/* Campaign Restored Banner */}
+      {activeCampaign && isSending && (
+        <Card className="p-4 bg-indigo-500/10 border-indigo-500/20 border-2 animate-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-indigo-500 flex items-center justify-center text-white">
+              <Activity className="h-5 w-5 animate-pulse" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-black text-indigo-700">Campaign Restored</h3>
+              <p className="text-xs text-indigo-600 font-medium">Your campaign is continuing from where it left off. ({progress.current}/{progress.total} processed)</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={stopCampaign}
+              className="border-indigo-500/30 text-indigo-600 hover:bg-indigo-500/10"
+            >
+              <Pause className="mr-1 h-3 w-3" /> Pause
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
