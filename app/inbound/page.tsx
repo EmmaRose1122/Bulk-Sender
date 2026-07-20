@@ -67,12 +67,12 @@ export default function InboundHubPage() {
                 {/* Message List */}
                 <div className="lg:col-span-4 space-y-6">
                     <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-red-500 transition-colors" />
                         <input
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search Intelligence..."
-                            className="w-full h-14 pl-12 pr-4 bg-white border-2 border-slate-100 rounded-2xl text-slate-700 font-medium focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm"
+                            className="w-full h-14 pl-12 pr-4 bg-white border-2 border-slate-100 rounded-2xl text-slate-700 font-medium focus:border-red-500 focus:ring-4 focus:ring-red-500/5 outline-none transition-all shadow-sm"
                         />
                     </div>
 
@@ -90,18 +90,18 @@ export default function InboundHubPage() {
                                     className={cn(
                                         "p-6 rounded-2xl cursor-pointer transition-all duration-300 border-2",
                                         selectedMsgId === msg.id
-                                            ? "bg-indigo-600 border-indigo-600 shadow-xl shadow-indigo-500/20 text-white"
-                                            : "bg-white border-slate-100 hover:border-indigo-200 hover:shadow-lg text-slate-600"
+                                            ? "bg-red-600 border-red-600 shadow-xl shadow-red-500/20 text-white"
+                                            : "bg-white border-slate-100 hover:border-red-200 hover:shadow-lg text-slate-600"
                                     )}
                                 >
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className={cn("text-[10px] font-black uppercase tracking-widest", selectedMsgId === msg.id ? "text-indigo-200" : "text-slate-400")}>
+                                        <span className={cn("text-[10px] font-black uppercase tracking-widest", selectedMsgId === msg.id ? "text-red-200" : "text-slate-400")}>
                                             {new Date(msg.receivedAt).toLocaleTimeString()}
                                         </span>
-                                        <div className={cn("h-2 w-2 rounded-full", selectedMsgId === msg.id ? "bg-white" : "bg-indigo-500 animate-pulse")} />
+                                        <div className={cn("h-2 w-2 rounded-full", selectedMsgId === msg.id ? "bg-white" : "bg-red-500 animate-pulse")} />
                                     </div>
                                     <h3 className="font-bold text-sm truncate mb-1">{msg.subject}</h3>
-                                    <p className={cn("text-xs truncate opacity-70", selectedMsgId === msg.id ? "text-indigo-50" : "text-slate-500")}>
+                                    <p className={cn("text-xs truncate opacity-70", selectedMsgId === msg.id ? "text-red-50" : "text-slate-500")}>
                                         From: {msg.from}
                                     </p>
                                 </div>
@@ -121,7 +121,7 @@ export default function InboundHubPage() {
                                             <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-white shadow-lg">
                                                 <Zap className="h-5 w-5" />
                                             </div>
-                                            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em]">Direct Transmission</span>
+                                            <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.3em]">Direct Transmission</span>
                                         </div>
                                         <CardTitle className="text-3xl font-black text-slate-950 tracking-tight leading-tight">
                                             {selectedMsg.subject}
@@ -167,7 +167,7 @@ export default function InboundHubPage() {
                                         <MessageSquare className="h-5 w-5" />
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Tactical Response Required</span>
                                     </div>
-                                    <Button className="gradient-primary h-12 px-8 rounded-xl text-white font-bold shadow-xl shadow-indigo-500/20">
+                                    <Button className="gradient-primary h-12 px-8 rounded-xl text-white font-bold shadow-xl shadow-red-500/20">
                                         Draft Counter-Message
                                     </Button>
                                 </div>

@@ -151,7 +151,7 @@ export default function FollowUpsPage() {
   };
 
   return (
-    <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="flex flex-col h-full space-y-8 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 overflow-y-auto custom-scrollbar pr-2">
       {/* Header */}
       <header className="flex items-start justify-between gap-4">
         <div>
@@ -162,7 +162,7 @@ export default function FollowUpsPage() {
         <Button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="h-12 px-6 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:scale-[1.01] transition-all shrink-0"
+          className="h-12 px-6 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-[1.01] transition-all shrink-0"
         >
           {isGenerating ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
@@ -187,9 +187,9 @@ export default function FollowUpsPage() {
 
       {/* Candidate info */}
       {candidateLeads.length > 0 && (
-        <div className="flex items-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
-          <AlertCircle className="h-5 w-5 text-indigo-400 shrink-0" />
-          <p className="text-sm text-indigo-700">
+        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">
+          <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+          <p className="text-sm text-red-700">
             <strong>{candidateLeads.length} contacted lead{candidateLeads.length !== 1 ? 's' : ''}</strong> with no reply found.
             Click "Generate Follow-ups" to create personalized drafts.
           </p>
@@ -237,8 +237,8 @@ export default function FollowUpsPage() {
                     {/* Card Header */}
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-8 w-8 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-                          <Mail className="h-4 w-4 text-indigo-500" />
+                        <div className="h-8 w-8 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                          <Mail className="h-4 w-4 text-red-500" />
                         </div>
                         <div className="min-w-0">
                           <span className="font-black text-slate-900 text-sm">{fu.leadName}</span>
@@ -251,7 +251,7 @@ export default function FollowUpsPage() {
                           onClick={() => handleApproveAndSend(fu)}
                           disabled={!!sendingId}
                           size="sm"
-                          className="h-8 px-4 text-xs font-bold gradient-primary text-white rounded-xl shadow-md shadow-indigo-500/20"
+                          className="h-8 px-4 text-xs font-bold gradient-primary text-white rounded-xl shadow-md shadow-red-500/20"
                         >
                           {sendingId === fu.id ? (
                             <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> Sending...</>
@@ -286,7 +286,7 @@ export default function FollowUpsPage() {
 
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : fu.id)}
-                      className="flex items-center gap-1 mt-2 text-[10px] font-bold text-indigo-500 hover:text-indigo-700 transition-colors"
+                      className="flex items-center gap-1 mt-2 text-[10px] font-bold text-red-500 hover:text-red-700 transition-colors"
                     >
                       {isExpanded ? (
                         <><EyeOff className="h-3 w-3" /> Hide full message</>

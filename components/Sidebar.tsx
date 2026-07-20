@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { BarChart, Search, Users, Clock, Settings, LogOut, Zap } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -15,29 +16,29 @@ export function Sidebar() {
                 className={cn(
                     "group flex items-center gap-4 rounded-xl px-4 py-3 font-medium transition-all duration-300",
                     pathname === href
-                        ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/10 text-white shadow-sm border border-indigo-500/20"
-                        : "hover:bg-slate-800/50 hover:text-slate-200"
+                        ? "bg-red-500 text-white shadow-md shadow-red-500/20"
+                        : "text-slate-600 hover:bg-red-50 hover:text-red-600"
                 )}
             >
-                <Icon className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === href ? "text-white" : "text-indigo-400")} />
+                <Icon className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === href ? "text-white" : "text-slate-400 group-hover:text-red-500")} />
                 {label}
             </Link>
         </li>
     );
 
     return (
-        <div className="flex h-screen w-64 flex-col glass-dark text-slate-400 border-r border-slate-800/50">
+        <div className="flex h-screen w-64 flex-col bg-transparent text-slate-800 border-r border-slate-200">
             {/* Logo Area */}
             <div className="p-8 pb-4">
-                <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white">
-                        <Zap className="h-5 w-5 fill-white" />
+                <div className="flex flex-col items-center gap-2 mb-2">
+                    <div className="relative h-20 w-32 flex items-center justify-center shrink-0">
+                        <Image src="/logo.png" alt="Dot Skills Logo" fill className="object-contain drop-shadow-sm" priority />
                     </div>
-                    <div>
-                        <h2 className="text-xl font-black tracking-tight text-white flex items-center gap-1">
-                            ZorainTool
+                    <div className="text-center mt-2">
+                        <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center justify-center gap-1">
+                            Dot Skills
                         </h2>
-                        <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-indigo-400">AI LEADS</span>
+                        <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-red-500">Marketing Agency</span>
                     </div>
                 </div>
             </div>
@@ -54,8 +55,8 @@ export function Sidebar() {
             </nav>
 
             {/* Bottom Actions */}
-            <div className="p-4 border-t border-slate-800/50">
-                <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white transition-colors group rounded-xl hover:bg-slate-800/50">
+            <div className="p-4 border-t border-slate-200">
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-600 hover:text-red-600 transition-colors group rounded-xl hover:bg-red-50">
                     <LogOut className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
                     <span className="font-bold text-sm tracking-wide">Logout</span>
                 </button>

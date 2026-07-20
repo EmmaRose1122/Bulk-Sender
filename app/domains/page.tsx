@@ -57,16 +57,16 @@ export default function DomainsPage() {
                     <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Domain Management</h1>
                     <p className="text-slate-500 font-medium mt-1">Configure and authorize sending domains for maximum reach.</p>
                 </div>
-                <Button onClick={() => setIsAdding(true)} variant="default" className="gradient-primary h-12 px-6 rounded-xl text-white font-bold shadow-xl shadow-indigo-500/20">
+                <Button onClick={() => setIsAdding(true)} variant="default" className="gradient-primary h-12 px-6 rounded-xl text-white font-bold shadow-xl shadow-red-500/20">
                     <Plus className="mr-2 h-5 w-5" /> Provision New Domain
                 </Button>
             </header>
 
             {isAdding && (
-                <Card className="glass-dark border-none shadow-2xl p-8 rounded-3xl animate-in zoom-in-95 duration-300">
+                <Card className="glass-red border-none shadow-2xl p-8 rounded-3xl animate-in zoom-in-95 duration-300">
                     <div className="space-y-6">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                            <div className="h-12 w-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-400">
                                 <Globe className="h-6 w-6" />
                             </div>
                             <h2 className="text-xl font-bold text-white tracking-tight">Register Sending Domain</h2>
@@ -124,7 +124,7 @@ export default function DomainsPage() {
                                             <Trash2 className="mr-2 h-4 w-4" /> Decommission
                                         </Button>
                                         {domain.status !== 'active' && (
-                                            <Button onClick={() => verifyDomain(domain)} className="gradient-primary text-white h-10 px-6 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20">
+                                            <Button onClick={() => verifyDomain(domain)} className="gradient-primary text-white h-10 px-6 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-500/20">
                                                 Verify Records
                                             </Button>
                                         )}
@@ -137,12 +137,12 @@ export default function DomainsPage() {
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">SPF Record</span>
-                                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(domain.spf, 'SPF')} className="h-6 w-6 text-indigo-500 hover:bg-indigo-50">
+                                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(domain.spf, 'SPF')} className="h-6 w-6 text-red-500 hover:bg-red-50">
                                                 <Copy className="h-4 w-4" />
                                             </Button>
                                         </div>
                                         <div className="p-4 bg-white border border-slate-100 rounded-2xl">
-                                            <code className="text-xs font-bold text-indigo-600 break-all">{domain.spf}</code>
+                                            <code className="text-xs font-bold text-red-600 break-all">{domain.spf}</code>
                                         </div>
                                         <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
                                             <CheckCircle2 className="h-3 w-3" /> Syntax Valid
@@ -153,12 +153,12 @@ export default function DomainsPage() {
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">DKIM Selector</span>
-                                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(domain.dkim, 'DKIM')} className="h-6 w-6 text-indigo-500 hover:bg-indigo-50">
+                                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(domain.dkim, 'DKIM')} className="h-6 w-6 text-red-500 hover:bg-red-50">
                                                 <Copy className="h-4 w-4" />
                                             </Button>
                                         </div>
                                         <div className="p-4 bg-white border border-slate-100 rounded-2xl">
-                                            <code className="text-xs font-bold text-indigo-600 break-all">{domain.dkim}</code>
+                                            <code className="text-xs font-bold text-red-600 break-all">{domain.dkim}</code>
                                         </div>
                                         <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
                                             <CheckCircle2 className="h-3 w-3" /> 2048-bit Secure
@@ -169,12 +169,12 @@ export default function DomainsPage() {
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">DMARC Policy</span>
-                                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(domain.dmarc, 'DMARC')} className="h-6 w-6 text-indigo-500 hover:bg-indigo-50">
+                                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(domain.dmarc, 'DMARC')} className="h-6 w-6 text-red-500 hover:bg-red-50">
                                                 <Copy className="h-4 w-4" />
                                             </Button>
                                         </div>
                                         <div className="p-4 bg-white border border-slate-100 rounded-2xl">
-                                            <code className="text-xs font-bold text-indigo-600 break-all">{domain.dmarc}</code>
+                                            <code className="text-xs font-bold text-red-600 break-all">{domain.dmarc}</code>
                                         </div>
                                         <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
                                             <CheckCircle2 className="h-3 w-3" /> Policy Active
@@ -205,7 +205,7 @@ export default function DomainsPage() {
                                 </div>
                             </div>
                             <div className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-                                <RefreshCw className="h-6 w-6 text-indigo-400 shrink-0" />
+                                <RefreshCw className="h-6 w-6 text-red-400 shrink-0" />
                                 <div>
                                     <p className="font-bold text-sm">Warm-up Your Domain</p>
                                     <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-widest leading-relaxed">Don&apos;t send 1,000 emails on day one. Start with 50, then 100, then 200. Rapid spikes in volume trigger &quot;Suspicious Activity&quot; alerts.</p>
@@ -215,19 +215,19 @@ export default function DomainsPage() {
                     </div>
                 </Card>
 
-                <Card className="border-none shadow-xl border border-slate-100 p-8 rounded-[2rem] bg-indigo-50/50">
+                <Card className="border-none shadow-xl border border-slate-100 p-8 rounded-[2rem] bg-red-50/50">
                     <h3 className="text-xl font-black text-slate-900 tracking-tight mb-6">Critical Record Hints</h3>
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">SPF (Sender Policy Framework)</Label>
+                            <Label className="text-[10px] font-black text-red-600 uppercase tracking-widest">SPF (Sender Policy Framework)</Label>
                             <p className="text-xs text-slate-600 leading-relaxed font-medium">A list of IP addresses authorized to send on behalf of your domain. You should update your existing SPF record to include your SMTP provider.</p>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">DKIM (DomainKeys Identified Mail)</Label>
+                            <Label className="text-[10px] font-black text-red-600 uppercase tracking-widest">DKIM (DomainKeys Identified Mail)</Label>
                             <p className="text-xs text-slate-600 leading-relaxed font-medium">A digital signature added to your email headers. It proves that the email wasn&apos;t tampered with during transit.</p>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">DMARC (Domain-based Message Authentication)</Label>
+                            <Label className="text-[10px] font-black text-red-600 uppercase tracking-widest">DMARC (Domain-based Message Authentication)</Label>
                             <p className="text-xs text-slate-600 leading-relaxed font-medium">Tells receiving servers what to do if SPF or DKIM fails. Setting this to &quot;p=quarantine&quot; or &quot;p=reject&quot; significantly boosts trust.</p>
                         </div>
                     </div>

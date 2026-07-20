@@ -120,7 +120,7 @@ export default function ProfilesPage() {
                     <p className="text-slate-500 font-medium mt-1">Manage your fleet of SMTP delivery sensors.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                    <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{accounts.length} Active Nodes</span>
                 </div>
             </header>
@@ -129,11 +129,11 @@ export default function ProfilesPage() {
             <div className="flex flex-wrap items-center gap-4">
                 <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                     <DialogTrigger asChild>
-                        <Button className="h-12 px-6 rounded-xl gradient-primary text-white font-bold shadow-lg shadow-indigo-500/20 hover:scale-[1.02] transition-all">
+                        <Button className="h-12 px-6 rounded-xl gradient-primary text-white font-bold shadow-lg shadow-red-500/20 hover:scale-[1.02] transition-all">
                             <Plus className="mr-2 h-4 w-4" /> Add Sensor Node
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="glass-dark border-none shadow-2xl p-8 rounded-3xl text-white">
+                    <DialogContent className="glass-red border-none shadow-2xl p-8 rounded-3xl text-white">
                         <DialogHeader>
                             <DialogTitle className="text-2xl font-black tracking-tight">Node Configuration</DialogTitle>
                         </DialogHeader>
@@ -173,13 +173,13 @@ export default function ProfilesPage() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button onClick={handleAddAccount} className="w-full h-12 rounded-xl gradient-primary font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20">Initialize Node</Button>
+                            <Button onClick={handleAddAccount} className="w-full h-12 rounded-xl gradient-primary font-black uppercase tracking-widest shadow-xl shadow-red-500/20">Initialize Node</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
 
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="h-12 px-6 rounded-xl border-slate-200 bg-white text-slate-900 font-bold hover:bg-slate-50 transition-all shadow-sm">
-                    <Upload className="mr-2 h-4 w-4 text-indigo-500" /> Batch Import
+                    <Upload className="mr-2 h-4 w-4 text-red-500" /> Batch Import
                 </Button>
                 <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleFileUpload} />
 
@@ -189,7 +189,7 @@ export default function ProfilesPage() {
                     variant="outline"
                     onClick={handleAutoLoginSelected}
                     disabled={selectedIds.length === 0}
-                    className="h-12 px-6 rounded-xl border-slate-200 bg-white text-indigo-600 font-bold hover:bg-indigo-50 transition-all shadow-sm disabled:opacity-50"
+                    className="h-12 px-6 rounded-xl border-slate-200 bg-white text-red-600 font-bold hover:bg-red-50 transition-all shadow-sm disabled:opacity-50"
                 >
                     <Activity className="mr-2 h-4 w-4" /> Verify Selected
                 </Button>
@@ -208,7 +208,7 @@ export default function ProfilesPage() {
             <Card className="glass border-none shadow-2xl overflow-hidden">
                 <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                        <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-white shadow-lg shadow-red-500/20">
                             <Users className="h-5 w-5" />
                         </div>
                         <div>
@@ -229,7 +229,7 @@ export default function ProfilesPage() {
                                     <Checkbox
                                         checked={selectedIds.length === accounts.length && accounts.length > 0}
                                         onCheckedChange={(checked) => checked ? handleSelectAll() : handleDeselectAll()}
-                                        className="h-5 w-5 rounded-md border-2 border-slate-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                                        className="h-5 w-5 rounded-md border-2 border-slate-300 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
                                     />
                                 </th>
                                 <th className="p-6 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Sensor Alias</th>
@@ -245,16 +245,16 @@ export default function ProfilesPage() {
                                 </tr>
                             )}
                             {accounts.map((account) => (
-                                <tr key={account.id} className="hover:bg-indigo-50/30 transition-colors group">
+                                <tr key={account.id} className="hover:bg-red-50/30 transition-colors group">
                                     <td className="p-6">
                                         <Checkbox
                                             checked={selectedIds.includes(account.id)}
                                             onCheckedChange={(checked: any) => toggleSelection(account.id)}
-                                            className="h-5 w-5 rounded-md border-2 border-slate-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 transition-all group-hover:border-indigo-400"
+                                            className="h-5 w-5 rounded-md border-2 border-slate-300 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 transition-all group-hover:border-red-400"
                                         />
                                     </td>
                                     <td className="p-6">
-                                        <span className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{account.name}</span>
+                                        <span className="text-sm font-bold text-slate-900 group-hover:text-red-600 transition-colors">{account.name}</span>
                                     </td>
                                     <td className="p-6">
                                         <span className="text-sm font-medium text-slate-500">{account.email}</span>
@@ -282,7 +282,7 @@ export default function ProfilesPage() {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleLogin(account)}
-                                                className="h-8 w-8 text-indigo-500 hover:bg-indigo-50 rounded-lg"
+                                                className="h-8 w-8 text-red-500 hover:bg-red-50 rounded-lg"
                                             >
                                                 <Activity className="h-4 w-4" />
                                             </Button>

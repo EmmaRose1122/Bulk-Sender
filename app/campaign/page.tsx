@@ -522,20 +522,20 @@ export default function CampaignPage() {
 
       {/* Campaign Status Banner */}
       {activeCampaign && isSending && (
-        <Card className="p-4 bg-indigo-500/10 border-indigo-500/20 border-2 animate-in slide-in-from-top-4 duration-500">
+        <Card className="p-4 bg-red-500/10 border-red-500/20 border-2 animate-in slide-in-from-top-4 duration-500">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-indigo-500 flex items-center justify-center text-white">
+            <div className="h-10 w-10 rounded-xl bg-red-500 flex items-center justify-center text-white">
               <Activity className="h-5 w-5 animate-pulse" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-black text-indigo-700">Campaign Running</h3>
-              <p className="text-xs text-indigo-600 font-medium">Continuing from where it left off. ({progress.current}/{progress.total} processed)</p>
+              <h3 className="text-sm font-black text-red-700">Campaign Running</h3>
+              <p className="text-xs text-red-600 font-medium">Continuing from where it left off. ({progress.current}/{progress.total} processed)</p>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={stopCampaign}
-              className="border-indigo-500/30 text-indigo-600 hover:bg-indigo-500/10"
+              className="border-red-500/30 text-red-600 hover:bg-red-500/10"
             >
               <Pause className="mr-1 h-3 w-3" /> Pause
             </Button>
@@ -617,12 +617,12 @@ export default function CampaignPage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
         {/* Left: Campaign Setup */}
         <div className="xl:col-span-8 space-y-8">
-          <Card className="p-8 glass-dark border-none shadow-2xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
+          <Card className="p-8 glass-red border-none shadow-2xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 blur-[80px] rounded-full pointer-events-none" />
 
             <div className="flex items-center justify-between mb-10">
               <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl gradient-primary flex items-center justify-center text-white shadow-xl shadow-indigo-500/20">
+                <div className="h-12 w-12 rounded-2xl gradient-primary flex items-center justify-center text-white shadow-xl shadow-red-500/20">
                   <ListTodo className="h-6 w-6" />
                 </div>
                 <div>
@@ -630,7 +630,7 @@ export default function CampaignPage() {
                   <p className="text-slate-400 text-xs font-medium">Configure target audience and delivery parameters.</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setIsHelpOpen(true)} className="text-slate-500 hover:text-indigo-400 hover:bg-slate-800/50 rounded-xl">
+              <Button variant="ghost" size="icon" onClick={() => setIsHelpOpen(true)} className="text-slate-500 hover:text-red-400 hover:bg-slate-800/50 rounded-xl">
                 <HelpCircle className="h-5 w-5" />
               </Button>
             </div>
@@ -640,14 +640,14 @@ export default function CampaignPage() {
               <div className="space-y-4">
                 <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Source Account</Label>
                 <select
-                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-red-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                   value={selectedSmtpId}
                   disabled={isSending}
                   onChange={(e) => setSelectedSmtpId(e.target.value)}
                 >
                   <option value="" className="bg-slate-900">Select Transmission Vector</option>
                   {accounts.length > 0 && (
-                    <optgroup label="Direct Profiles" className="bg-slate-900 text-indigo-400 font-bold uppercase text-[10px]">
+                    <optgroup label="Direct Profiles" className="bg-slate-900 text-red-400 font-bold uppercase text-[10px]">
                       {accounts.map((a: AccountProfile) => (
                         <option key={a.id} value={a.id} className="bg-slate-900 text-slate-200">{a.name} ({a.email})</option>
                       ))}
@@ -667,7 +667,7 @@ export default function CampaignPage() {
               <div className="space-y-4">
                 <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Authorized Domain Vector</Label>
                 <select
-                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-12 bg-slate-800/30 border-2 border-slate-700/50 rounded-xl px-4 text-slate-200 focus:ring-2 focus:ring-red-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                   value={selectedDomainId}
                   disabled={isSending}
                   onChange={(e) => setSelectedDomainId(e.target.value)}
@@ -690,13 +690,13 @@ export default function CampaignPage() {
                 <div className="flex flex-wrap gap-4">
                   <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" ref={fileInputRef} />
                   <Button onClick={() => fileInputRef.current?.click()} disabled={isSending} variant="outline" className="h-12 px-6 rounded-xl border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Users className="mr-2 h-4 w-4 text-indigo-400" /> Upload CSV
+                    <Users className="mr-2 h-4 w-4 text-red-400" /> Upload CSV
                   </Button>
                   <Button onClick={() => setIsManualInputOpen(true)} disabled={isSending} variant="outline" className="h-12 px-6 rounded-xl border-slate-700 bg-slate-800/50 text-white hover:bg-slate-700 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed">
-                    <MessageSquare className="mr-2 h-4 w-4 text-indigo-400" /> Manual
+                    <MessageSquare className="mr-2 h-4 w-4 text-red-400" /> Manual
                   </Button>
                   {csvData.length > 0 && (
-                    <div className="flex items-center gap-2 px-4 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
+                    <div className="flex items-center gap-2 px-4 h-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300">
                       <ShieldCheck className="h-4 w-4" /> <span className="text-sm font-bold">{csvData.length} Recipients</span>
                     </div>
                   )}
@@ -709,13 +709,13 @@ export default function CampaignPage() {
                 <div className="relative">
                   <select
                     multiple
-                    className="w-full h-40 bg-slate-800/30 border-2 border-slate-700/50 rounded-2xl p-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-40 bg-slate-800/30 border-2 border-slate-700/50 rounded-2xl p-4 text-slate-200 focus:ring-2 focus:ring-red-500 outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                     value={selectedTemplateIds}
                     disabled={isSending}
                     onChange={(e) => setSelectedTemplateIds(Array.from(e.target.selectedOptions, o => o.value))}
                   >
                     {templates.map((t: EmailTemplate) => (
-                      <option key={t.id} value={t.id} className="p-3 rounded-lg hover:bg-indigo-500/20 mb-1">📄 {t.name} ({t.subject})</option>
+                      <option key={t.id} value={t.id} className="p-3 rounded-lg hover:bg-red-500/20 mb-1">📄 {t.name} ({t.subject})</option>
                     ))}
                   </select>
                   <div className="absolute bottom-4 right-4 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-700 text-[10px] font-bold text-slate-400 uppercase">
@@ -725,12 +725,12 @@ export default function CampaignPage() {
                 <div className="flex flex-wrap gap-2 pt-2">
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-700/50 rounded-md px-2 py-1 bg-slate-800/30">Available Tokens:</span>
                   {['name', 'business_name', 'website'].map(token => (
-                    <code key={token} className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/20">
+                    <code key={token} className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/20">
                       {"{{"}{token}{"|fallback}"}
                     </code>
                   ))}
-                  <div className="w-full flex items-center gap-2 mt-2 px-3 py-2 bg-indigo-500/5 border border-indigo-500/10 rounded-lg">
-                    <AlertCircle className="h-3 w-3 text-indigo-400" />
+                  <div className="w-full flex items-center gap-2 mt-2 px-3 py-2 bg-red-500/5 border border-red-500/10 rounded-lg">
+                    <AlertCircle className="h-3 w-3 text-red-400" />
                     <p className="text-[10px] text-slate-400 font-medium italic">Case-insensitive. Use | for optional fallbacks.</p>
                   </div>
                 </div>
@@ -792,7 +792,7 @@ export default function CampaignPage() {
                 ) : !isSending ? (
                   // New campaign - show Launch
                   <Button
-                    className="flex-1 h-14 gradient-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20 hover:scale-[1.02] transition-all"
+                    className="flex-1 h-14 gradient-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-red-500/20 hover:scale-[1.02] transition-all"
                     onClick={startCampaign}
                     disabled={logs.length === 0}
                   >
@@ -839,14 +839,14 @@ export default function CampaignPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-indigo-50/30 transition-colors group">
+                    <tr key={log.id} className="hover:bg-red-50/30 transition-colors group">
                       <td className="p-6"><span className="text-sm font-bold text-slate-700">{log.email}</span></td>
                       <td className="p-6 text-[10px] font-bold uppercase tracking-widest">
                         <div className="flex gap-2">
                           {log.status === 'sent' && <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">Transmitted</span>}
                           {log.status === 'failed' && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full border border-red-200">Blocked</span>}
                           {log.status === 'pending' && <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full border border-slate-200">In Queue</span>}
-                          {log.opened && <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200 flex items-center gap-1"><Eye className="h-3 w-3" /> Visualized</span>}
+                          {log.opened && <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full border border-red-200 flex items-center gap-1"><Eye className="h-3 w-3" /> Visualized</span>}
                         </div>
                       </td>
                       <td className="p-6">
@@ -859,8 +859,8 @@ export default function CampaignPage() {
                           </div>
                           {log.opened && (
                             <div className="flex items-center gap-1.5">
-                              <Eye className="h-3 w-3 text-indigo-500" />
-                              <span className="text-[10px] font-black text-indigo-600 tabular-nums uppercase">
+                              <Eye className="h-3 w-3 text-red-500" />
+                              <span className="text-[10px] font-black text-red-600 tabular-nums uppercase">
                                 {new Date(log.openedAt || 0).toLocaleTimeString()}
                               </span>
                             </div>
@@ -891,7 +891,7 @@ export default function CampaignPage() {
       </div>
 
       <Dialog open={isManualInputOpen} onOpenChange={setIsManualInputOpen}>
-        <DialogContent className="glass-dark border-none shadow-2xl p-8 max-w-2xl rounded-3xl">
+        <DialogContent className="glass-red border-none shadow-2xl p-8 max-w-2xl rounded-3xl">
           <DialogHeader className="mb-6">
             <DialogTitle className="text-2xl font-black text-white tracking-tight">Direct Entry Protocol</DialogTitle>
             <DialogDescription className="text-slate-400">Manual injection of recipient email addresses.</DialogDescription>
@@ -900,7 +900,7 @@ export default function CampaignPage() {
             <Label className="text-xs font-bold text-slate-300 uppercase tracking-widest">Recipient Array (One per line)</Label>
             <Textarea
               placeholder="operator1@agency.com&#10;operator2@agency.com"
-              className="min-h-[300px] bg-slate-800/50 border-2 border-slate-700/50 text-white rounded-2xl p-6 focus:ring-2 focus:ring-indigo-500"
+              className="min-h-[300px] bg-slate-800/50 border-2 border-slate-700/50 text-white rounded-2xl p-6 focus:ring-2 focus:ring-red-500"
               value={manualInputText}
               onChange={(e: any) => setManualInputText(e.target.value)}
             />
@@ -912,7 +912,7 @@ export default function CampaignPage() {
       </Dialog>
 
       <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
-        <DialogContent className="glass-dark border-none shadow-2xl p-8 max-w-2xl rounded-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="glass-red border-none shadow-2xl p-8 max-w-2xl rounded-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader className="mb-6">
             <DialogTitle className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
               <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
@@ -940,7 +940,7 @@ export default function CampaignPage() {
             </div>
 
             <div className="space-y-2">
-              <h3 className="font-bold text-white flex items-center gap-2"><Zap className="h-4 w-4 text-indigo-500" /> Resume</h3>
+              <h3 className="font-bold text-white flex items-center gap-2"><Zap className="h-4 w-4 text-red-500" /> Resume</h3>
               <p className="text-sm leading-relaxed">Click "Resume Campaign" to continue exactly where you left off, applying your <strong>new settings</strong> to the remaining recipients.</p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import Papa from 'papaparse';
 import { useAppContext } from '../../../context/AppContext';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -21,12 +22,12 @@ const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: stri
   new:        { label: 'New',        color: 'text-blue-600',   bg: 'bg-blue-50',   ring: 'ring-blue-200'   },
   contacted:  { label: 'Contacted',  color: 'text-amber-600',  bg: 'bg-amber-50',  ring: 'ring-amber-200'  },
   replied:    { label: 'Replied',    color: 'text-emerald-600',bg: 'bg-emerald-50',ring: 'ring-emerald-200' },
-  interested: { label: 'Interested', color: 'text-purple-600', bg: 'bg-purple-50', ring: 'ring-purple-200'  },
+  interested: { label: 'Interested', color: 'text-rose-600', bg: 'bg-rose-50', ring: 'ring-rose-200'  },
   closed:     { label: 'Closed',     color: 'text-slate-500',  bg: 'bg-slate-100', ring: 'ring-slate-200'   },
 };
 
 export default function LeadsListPage() {
-  const { leads, updateLead, removeLead, smtpConfigs, googleApiSettings } = useAppContext();
+  const { leads, updateLead, removeLead, addLeads, smtpConfigs, googleApiSettings } = useAppContext();
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all');
@@ -39,6 +40,8 @@ export default function LeadsListPage() {
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isCsvGuideOpen, setIsCsvGuideOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Bulk selection
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
@@ -182,7 +185,31 @@ Best regards,`);
 
     const smtp = smtpConfigs[0];
     if (!smtp) {
-      toast.error('No SMTP account configured. Add one in Settings.');
+      // Use Google Account Chooser to ask which Gmail account to use, then redirect to Gmail Compose
+      const targetUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedLead.email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      const chooserUrl = `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent(targetUrl)}`;
+      window.open(chooserUrl, '_blank');
+
+      // Update lead status + add to history
+      const entry: CommunicationEntry = {
+        id: crypto.randomUUID(),
+        type: 'email_sent',
+        subject: emailSubject,
+        body: emailBody,
+        sentAt: Date.now(),
+      };
+
+      const updated: Lead = {
+        ...selectedLead,
+        status: 'contacted',
+        lastContactedAt: Date.now(),
+        communicationHistory: [entry, ...(selectedLead.communicationHistory || [])],
+      };
+
+      updateLead(updated);
+      setSelectedLead(updated);
+      setIsEmailDialogOpen(false);
+      toast.success(`Opened default email app for ${selectedLead.businessName}!`);
       return;
     }
 
@@ -241,10 +268,88 @@ Best regards,`);
     toast.success('Lead removed');
   };
 
+  const handleExportCSV = () => {
+    if (leads.length === 0) {
+      toast.info('No leads to export.');
+      return;
+    }
+    
+    const exportData = leads.map(l => ({
+      BusinessName: l.businessName,
+      Email: l.email,
+      Phone: l.phone,
+      Website: l.website,
+      Address: l.address,
+      City: l.city,
+      Country: l.country,
+      Niche: l.niche,
+      Status: l.status,
+      Notes: l.notes,
+      CreatedAt: new Date(l.createdAt).toLocaleString(),
+    }));
+
+    const csv = Papa.unparse(exportData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'leads_export.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Leads exported successfully!');
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        let importedCount = 0;
+        const newLeads = results.data.map((row: any) => {
+          const exists = leads.find(l => (row.Email && l.email === row.Email) || (row.Phone && l.phone === row.Phone));
+          if (!exists && row.BusinessName) {
+            importedCount++;
+            return {
+              id: crypto.randomUUID(),
+              businessName: row.BusinessName || 'Unknown Business',
+              email: row.Email || '',
+              phone: row.Phone || '',
+              website: row.Website || '',
+              address: row.Address || '',
+              city: row.City || '',
+              country: row.Country || '',
+              niche: row.Niche || 'General',
+              status: (row.Status as LeadStatus) || 'new',
+              notes: row.Notes || '',
+              communicationHistory: [],
+              createdAt: Date.now(),
+            } as Lead;
+          }
+          return null;
+        }).filter(Boolean) as Lead[];
+
+        if (newLeads.length > 0) {
+            addLeads(newLeads);
+            toast.success(`Successfully imported ${importedCount} new leads!`);
+        } else {
+            toast.info('No new leads to import or invalid CSV format.');
+        }
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      },
+      error: () => {
+        toast.error('Failed to parse CSV file.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    });
+  };
+
   return (
-    <div className="flex h-full gap-0 animate-in fade-in duration-500">
+    <div className="flex h-full min-h-0 gap-0 animate-in fade-in duration-500 relative flex-1">
       {/* Main Content */}
-      <div className={cn('flex-1 min-w-0 space-y-6 pb-20 transition-all duration-300', selectedLead ? 'pr-[380px]' : '')}>
+      <div className={cn('flex-1 min-w-0 flex flex-col space-y-6 transition-all duration-300 h-full min-h-0', selectedLead ? 'pr-[380px]' : '')}>
         
         {/* Header with Export/Import */}
         <header className="flex items-center justify-between">
@@ -253,12 +358,19 @@ Best regards,`);
             <p className="text-slate-500 font-medium mt-1">{leads.length} leads in database</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="h-10 rounded-xl border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50">
+            <Button variant="outline" onClick={handleExportCSV} className="h-10 rounded-xl border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50">
               <Download className="h-4 w-4 mr-2" /> Export CSV
             </Button>
-            <Button variant="outline" className="h-10 rounded-xl border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50">
-              <Upload className="h-4 w-4 mr-2" /> Import CSV
-            </Button>
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden p-0.5">
+              <input type="file" accept=".csv" ref={fileInputRef} onChange={handleImportCSV} className="hidden" id="csvUpload" />
+              <Button variant="ghost" onClick={() => fileInputRef.current?.click()} className="h-9 rounded-lg text-slate-700 font-bold text-xs hover:bg-white hover:shadow-sm">
+                <Upload className="h-4 w-4 mr-2" /> Import
+              </Button>
+              <div className="w-px h-4 bg-slate-200 mx-1"></div>
+              <Button variant="ghost" onClick={() => setIsCsvGuideOpen(true)} className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-white hover:shadow-sm" title="CSV Format Guide">
+                <AlertCircle className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -303,12 +415,12 @@ Best regards,`);
 
         {/* Bulk Action Bar */}
         {selectedLeadIds.size > 0 && (
-          <div className="flex items-center gap-4 bg-indigo-50/50 border border-indigo-100 p-3 rounded-2xl animate-in slide-in-from-top-2">
-            <span className="text-sm font-bold text-indigo-900 px-2">{selectedLeadIds.size} selected</span>
-            <div className="h-4 w-px bg-indigo-200" />
+          <div className="flex items-center gap-4 bg-red-50/50 border border-red-100 p-3 rounded-2xl animate-in slide-in-from-top-2">
+            <span className="text-sm font-bold text-red-900 px-2">{selectedLeadIds.size} selected</span>
+            <div className="h-4 w-px bg-red-200" />
             <div className="flex items-center gap-2 flex-1">
               <Button size="sm" variant="ghost" onClick={() => handleBulkStatusChange('contacted')} className="text-xs font-bold text-amber-600 hover:bg-amber-100 hover:text-amber-700 bg-amber-50 h-8">Mark Contacted</Button>
-              <Button size="sm" variant="ghost" onClick={() => handleBulkStatusChange('interested')} className="text-xs font-bold text-purple-600 hover:bg-purple-100 hover:text-purple-700 bg-purple-50 h-8">Mark Interested</Button>
+              <Button size="sm" variant="ghost" onClick={() => handleBulkStatusChange('interested')} className="text-xs font-bold text-rose-600 hover:bg-rose-100 hover:text-rose-700 bg-rose-50 h-8">Mark Interested</Button>
               <Button size="sm" variant="ghost" onClick={() => handleBulkStatusChange('closed')} className="text-xs font-bold text-slate-600 hover:bg-slate-200 hover:text-slate-700 bg-slate-100 h-8">Mark Closed</Button>
             </div>
             <Button size="sm" variant="ghost" onClick={handleBulkDelete} className="text-xs font-bold text-red-500 hover:bg-red-50 hover:text-red-600 h-8">
@@ -319,14 +431,14 @@ Best regards,`);
 
         {/* Table */}
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl">
+          <div className="flex flex-col items-center justify-center py-24 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex-1">
             <Building2 className="h-12 w-12 text-slate-300 mb-4 animate-float" />
             <p className="text-slate-400 font-bold">No leads found</p>
             <p className="text-xs text-slate-400 mt-1">Your database is empty. Go to Lead Finder to start scraping real business data.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
+            <div className="overflow-auto flex-1 custom-scrollbar">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50/50 border-b border-slate-100">
                   <tr>
@@ -354,7 +466,7 @@ Best regards,`);
                         key={lead.id} 
                         className={cn(
                           "transition-colors hover:bg-slate-50/50 group cursor-pointer",
-                          isSelected && "bg-indigo-50/30"
+                          isSelected && "bg-red-50/30"
                         )}
                         onClick={() => openPanel(lead)}
                       >
@@ -367,7 +479,7 @@ Best regards,`);
                         <td className="p-4">
                           <p className="font-bold text-slate-900 truncate max-w-[250px]">{lead.businessName}</p>
                           <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[250px] flex items-center gap-1">
-                            {lead.website ? <a href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline inline-flex items-center gap-1" onClick={e => e.stopPropagation()}><Globe className="h-3 w-3"/> Website</a> : lead.niche}
+                            {lead.website ? <a href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`} target="_blank" rel="noopener noreferrer" className="text-red-500 hover:underline inline-flex items-center gap-1" onClick={e => e.stopPropagation()}><Globe className="h-3 w-3"/> Website</a> : lead.niche}
                           </p>
                         </td>
                         <td className="p-4 text-slate-500">
@@ -390,7 +502,7 @@ Best regards,`);
                           <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                               onClick={(e) => { e.stopPropagation(); openEmailDialog(lead); }}
-                              className="h-8 w-8 rounded-lg text-indigo-500 hover:bg-indigo-50 flex items-center justify-center transition-colors"
+                              className="h-8 w-8 rounded-lg text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
                               title="Send Email"
                             >
                               <Mail className="h-4 w-4" />
@@ -420,7 +532,7 @@ Best regards,`);
           <div className="flex items-start justify-between p-6 border-b border-slate-100">
             <div>
               <h2 className="font-black text-slate-900 text-lg leading-tight">{selectedLead.businessName}</h2>
-              <span className={cn('inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600')}>
+              <span className={cn('inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600')}>
                 {selectedLead.niche}
               </span>
             </div>
@@ -469,7 +581,7 @@ Best regards,`);
                     <Button
                       onClick={() => openEmailDialog(selectedLead)}
                       size="sm"
-                      className="h-7 px-3 text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-md shrink-0 border border-indigo-100"
+                      className="h-7 px-3 text-[10px] font-bold bg-red-50 hover:bg-red-100 text-red-600 rounded-md shrink-0 border border-red-100"
                     >
                       Send Email
                     </Button>
@@ -491,6 +603,7 @@ Best regards,`);
                       size="sm"
                       className="h-7 px-3 text-[10px] font-bold bg-green-50 hover:bg-green-100 text-green-600 rounded-md shrink-0 border border-green-100"
                       onClick={() => {
+                        if (!selectedLead.phone) return;
                         const wNumber = selectedLead.phone.replace(/[^0-9]/g, '');
                         window.open(`https://wa.me/${wNumber}`, '_blank');
                       }}
@@ -509,7 +622,7 @@ Best regards,`);
                       href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-indigo-600 font-medium hover:underline truncate"
+                      className="text-sm text-red-600 font-medium hover:underline truncate"
                     >
                       <span className="text-[10px] text-slate-400 block -mb-1">Website</span>
                       {selectedLead.website}
@@ -539,7 +652,7 @@ Best regards,`);
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   placeholder="Add notes about this lead..."
-                  className="bg-white border-slate-200 rounded-xl text-sm resize-none min-h-[100px] shadow-sm pb-12 focus-visible:ring-indigo-500"
+                  className="bg-white border-slate-200 rounded-xl text-sm resize-none min-h-[100px] shadow-sm pb-12 focus-visible:ring-red-500"
                 />
                 <Button
                   onClick={handleSaveNotes}
@@ -562,17 +675,17 @@ Best regards,`);
               ) : (
                 <div className="space-y-3">
                   {selectedLead.communicationHistory.map(entry => (
-                    <div key={entry.id} className="flex gap-3 p-4 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl">
+                    <div key={entry.id} className="flex gap-3 p-4 bg-red-50/50 border border-red-100/50 rounded-2xl">
                       {entry.type.includes('whatsapp') ? (
                         <MessageCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
                       ) : (
-                        <Mail className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
+                        <Mail className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between mb-1">
                           <span className={cn(
                             "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full",
-                            entry.type.includes('whatsapp') ? "bg-green-100 text-green-600" : "bg-indigo-100 text-indigo-500"
+                            entry.type.includes('whatsapp') ? "bg-green-100 text-green-600" : "bg-red-100 text-red-500"
                           )}>
                             {entry.type === 'email_sent' ? 'Email sent' : entry.type === 'followup_sent' ? 'Follow-up' : 'WhatsApp sent'}
                           </span>
@@ -616,7 +729,7 @@ Best regards,`);
               <Input
                 value={emailSubject}
                 onChange={e => setEmailSubject(e.target.value)}
-                className="border-slate-200 h-11 rounded-xl shadow-sm focus-visible:ring-indigo-500"
+                className="border-slate-200 h-11 rounded-xl shadow-sm focus-visible:ring-red-500"
                 placeholder="Email subject..."
               />
             </div>
@@ -625,18 +738,25 @@ Best regards,`);
               <Textarea
                 value={emailBody}
                 onChange={e => setEmailBody(e.target.value)}
-                className="border-slate-200 text-sm min-h-[200px] resize-y rounded-xl shadow-sm focus-visible:ring-indigo-500 p-4"
+                className="border-slate-200 text-sm min-h-[200px] resize-y rounded-xl shadow-sm focus-visible:ring-red-500 p-4"
                 placeholder="Email body..."
               />
             </div>
           </div>
+
+          {!smtpConfigs[0] && (
+            <div className="mx-4 mb-2 px-4 py-3 bg-amber-50 text-amber-700 text-xs font-bold rounded-xl border border-amber-100 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              No SMTP configured. This will open Gmail and ask you to select an account.
+            </div>
+          )}
 
           <DialogFooter className="flex items-center justify-between sm:justify-between border-t border-slate-100 pt-4">
             <Button 
               variant="ghost" 
               onClick={handleRegenerateEmail}
               disabled={isRegenerating}
-              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-bold text-xs"
+              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-bold text-xs"
             >
               {isRegenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Regenerate
@@ -646,16 +766,57 @@ Best regards,`);
               <Button variant="ghost" onClick={() => setIsEmailDialogOpen(false)} className="text-slate-500 hover:text-slate-700 font-bold text-sm">Cancel</Button>
               <Button
                 onClick={handleSendEmail}
-                disabled={isSendingEmail || !smtpConfigs[0]}
-                className="gradient-primary text-white font-bold h-11 px-8 rounded-xl shadow-xl shadow-indigo-500/20"
+                disabled={isSendingEmail}
+                className="bg-rose-500 hover:bg-rose-600 text-white font-bold h-11 px-8 rounded-xl shadow-xl shadow-rose-500/20"
               >
                 {isSendingEmail ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
                 ) : (
-                  <><Send className="mr-2 h-4 w-4" /> Send</>
+                  <><Send className="mr-2 h-4 w-4" /> {!smtpConfigs[0] ? 'Send via Gmail' : 'Send'}</>
                 )}
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CSV Guide Dialog */}
+      <Dialog open={isCsvGuideOpen} onOpenChange={setIsCsvGuideOpen}>
+        <DialogContent className="max-w-md bg-white border-none shadow-2xl rounded-[2rem] overflow-hidden sm:rounded-[2rem]">
+          <DialogHeader className="pb-4 border-b border-slate-100 px-2 pt-2">
+            <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              CSV Import Guide
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4 px-2 text-sm text-slate-600">
+            <p className="leading-relaxed">Your CSV file should have a header row with the following column names. Only <strong className="text-slate-900">BusinessName</strong> is strictly required.</p>
+            
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 font-mono text-[11px] leading-loose break-words text-slate-700 font-bold shadow-inner">
+              BusinessName, Email, Phone, Website, Address, City, Country, Niche, Status, Notes
+            </div>
+
+            <ul className="space-y-2 mt-4 text-xs font-medium text-slate-500">
+              <li className="flex gap-2 items-start"><div className="mt-1 h-1.5 w-1.5 rounded-full bg-rose-400 shrink-0"/><span><span className="font-bold text-slate-900">BusinessName:</span> Required. Name of the business.</span></li>
+              <li className="flex gap-2 items-start"><div className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0"/><span><span className="font-bold text-slate-900">Email:</span> Contact email address.</span></li>
+              <li className="flex gap-2 items-start"><div className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0"/><span><span className="font-bold text-slate-900">Phone:</span> Contact phone number.</span></li>
+              <li className="flex gap-2 items-start"><div className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0"/><span><span className="font-bold text-slate-900">Status:</span> <code className="bg-slate-100 px-1.5 py-0.5 rounded-md text-rose-600 border border-slate-200">new</code>, <code className="bg-slate-100 px-1.5 py-0.5 rounded-md text-rose-600 border border-slate-200">contacted</code>, <code className="bg-slate-100 px-1.5 py-0.5 rounded-md text-rose-600 border border-slate-200">replied</code>, <code className="bg-slate-100 px-1.5 py-0.5 rounded-md text-rose-600 border border-slate-200">interested</code>, <code className="bg-slate-100 px-1.5 py-0.5 rounded-md text-rose-600 border border-slate-200">closed</code></span></li>
+              <li className="flex gap-2 items-start"><div className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0"/><span><span className="font-bold text-slate-900">Niche:</span> E.g., Plumber, Dentist, etc.</span></li>
+            </ul>
+
+            <div className="mt-6 bg-rose-50 text-rose-700 text-xs p-4 rounded-2xl border border-rose-100 font-medium flex gap-3 items-start">
+              <Sparkles className="h-4 w-4 shrink-0 mt-0.5" />
+              <p className="leading-relaxed"><strong>Tip:</strong> The easiest way to get the correct format is to click <strong className="text-rose-800">"Export CSV"</strong> first, add your new data to that file, and then import it back.</p>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-slate-100 pt-4 px-2 pb-2">
+            <Button onClick={() => setIsCsvGuideOpen(false)} className="w-full bg-rose-500 hover:bg-rose-600 text-white rounded-xl h-12 font-black uppercase tracking-widest shadow-md shadow-rose-500/20">
+              Got it, Thanks!
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

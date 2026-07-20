@@ -30,18 +30,18 @@ export default function DashboardPage() {
         .slice(0, 5);
 
     const stats = [
-        { title: 'Total Leads', value: totalLeads.toString(), icon: <Users className="h-5 w-5 text-indigo-400" />, bg: 'bg-indigo-500/10' },
+        { title: 'Total Leads', value: totalLeads.toString(), icon: <Users className="h-5 w-5 text-red-400" />, bg: 'bg-red-500/10' },
         { title: 'Emails Sent', value: emailsSent.toString(), icon: <Mail className="h-5 w-5 text-emerald-400" />, bg: 'bg-emerald-500/10' },
         { title: 'WhatsApp Sent', value: '0', icon: <MessageCircle className="h-5 w-5 text-green-400" />, bg: 'bg-green-500/10' },
         { title: 'Replies', value: '0', icon: <MessageSquare className="h-5 w-5 text-blue-400" />, bg: 'bg-blue-500/10' },
-        { title: 'Email Open Rate', value: '0%', icon: <Eye className="h-5 w-5 text-purple-400" />, bg: 'bg-purple-500/10' },
+        { title: 'Email Open Rate', value: '0%', icon: <Eye className="h-5 w-5 text-rose-400" />, bg: 'bg-rose-500/10' },
         { title: 'Pending Follow-ups', value: pendingFollowups.toString(), icon: <Clock className="h-5 w-5 text-amber-400" />, bg: 'bg-amber-500/10' },
     ];
 
     const pipelineStages = ['New', 'Contacted', 'Replied', 'Interested', 'Closed'];
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+        <div className="flex flex-col h-full min-h-0 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 overflow-hidden flex-1">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
@@ -51,14 +51,17 @@ export default function DashboardPage() {
             </div>
 
             {/* Top Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {stats.map((stat, i) => (
                     <Card key={i} className="glass border-none shadow-xl rounded-2xl overflow-hidden group hover:scale-[1.02] transition-transform">
-                        <CardContent className="p-6">
-                            <div className="flex justify-between items-start">
-                                <div className="space-y-2">
-                                    <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">{stat.title}</p>
-                                    <p className="text-4xl font-black text-slate-900">{stat.value}</p>
+                        <CardContent className="p-4">
+                            <div className="flex flex-col justify-between items-start gap-2">
+                                <div className={`p-2 rounded-xl ${stat.bg} self-end absolute top-4 right-4`}>
+                                    {stat.icon}
+                                </div>
+                                <div className="space-y-1 w-full">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate pr-8">{stat.title}</p>
+                                    <p className="text-2xl font-black text-slate-900">{stat.value}</p>
                                 </div>
                                 <div className={`p-3 rounded-2xl ${stat.bg}`}>
                                     {stat.icon}
@@ -70,11 +73,11 @@ export default function DashboardPage() {
             </div>
 
             {/* Charts Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0 pb-4">
                 {/* Pipeline Chart */}
-                <Card className="glass border-none shadow-2xl rounded-3xl p-6 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[80px] rounded-full pointer-events-none" />
-                    <CardHeader className="p-0 mb-6">
+                <Card className="glass border-none shadow-2xl rounded-3xl p-5 relative overflow-hidden flex flex-col h-full min-h-0">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 blur-[80px] rounded-full pointer-events-none" />
+                    <CardHeader className="p-0 mb-4 shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-white shadow-lg">
                                 <BarChart3 className="h-5 w-5" />
@@ -85,7 +88,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0 space-y-5">
+                    <CardContent className="p-0 space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-2">
                         {pipelineStages.map(stage => {
                             const count = statusCounts[stage] || 0;
                             const percentage = totalLeads === 0 ? 0 : Math.round((count / totalLeads) * 100);
@@ -108,9 +111,9 @@ export default function DashboardPage() {
                 </Card>
 
                 {/* Top Niches */}
-                <Card className="glass border-none shadow-2xl rounded-3xl p-6 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 blur-[80px] rounded-full pointer-events-none" />
-                    <CardHeader className="p-0 mb-6">
+                <Card className="glass border-none shadow-2xl rounded-3xl p-5 relative overflow-hidden flex flex-col h-full min-h-0">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 blur-[80px] rounded-full pointer-events-none" />
+                    <CardHeader className="p-0 mb-4 shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-xl gradient-secondary flex items-center justify-center text-white shadow-lg">
                                 <ListFilter className="h-5 w-5" />
@@ -121,7 +124,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0 space-y-4">
+                    <CardContent className="p-0 space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
                         {topNiches.length > 0 ? topNiches.map(([niche, count], i) => (
                             <div key={niche} className="flex items-center justify-between p-4 rounded-2xl bg-white/50 border border-slate-100 shadow-sm">
                                 <div className="flex items-center gap-4">

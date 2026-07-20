@@ -121,7 +121,7 @@ export default function LeadFinderPage() {
   };
 
   return (
-    <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="flex flex-col h-full min-h-0 space-y-8 pb-8 animate-in fade-in duration-500 overflow-y-auto custom-scrollbar pr-2 flex-1">
       {/* Header */}
       <header>
         <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Lead Finder</h1>
@@ -137,7 +137,7 @@ export default function LeadFinderPage() {
             <select
               value={niche}
               onChange={(e) => setNiche(e.target.value)}
-              className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="">Select a niche...</option>
               {NICHES.map(n => <option key={n} value={n}>{n}</option>)}
@@ -162,7 +162,7 @@ export default function LeadFinderPage() {
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
             </select>
@@ -174,7 +174,7 @@ export default function LeadFinderPage() {
             <select
               value={maxResults}
               onChange={(e) => setMaxResults(Number(e.target.value))}
-              className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value={10}>10</option>
               <option value={20}>20</option>
@@ -187,7 +187,7 @@ export default function LeadFinderPage() {
           <Button
             onClick={handleScrape}
             disabled={isScraping}
-            className="h-12 px-8 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:scale-[1.01] transition-all"
+            className="h-12 px-8 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-[1.01] transition-all"
           >
             {isScraping ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scraping...</>
@@ -200,7 +200,7 @@ export default function LeadFinderPage() {
             <Button
               onClick={handleSaveAll}
               variant="outline"
-              className="h-12 px-6 rounded-2xl border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-50"
+              className="h-12 px-6 rounded-2xl border-red-200 text-red-700 font-bold hover:bg-red-50"
             >
               <Plus className="mr-2 h-4 w-4" /> Save All ({results.length})
             </Button>
@@ -246,7 +246,7 @@ export default function LeadFinderPage() {
           <div className="relative">
             <div className="h-16 w-16 rounded-full gradient-primary animate-spin" style={{ clipPath: 'polygon(0 0, 50% 0, 50% 50%, 0 50%)' }} />
             <div className="absolute inset-2 rounded-full bg-white" />
-            <Search className="absolute inset-0 m-auto h-6 w-6 text-indigo-600" />
+            <Search className="absolute inset-0 m-auto h-6 w-6 text-red-600" />
           </div>
           <p className="text-sm font-bold text-slate-500 uppercase tracking-widest animate-pulse">Scanning businesses...</p>
           <p className="text-xs text-slate-400">Fetching details & extracting emails from websites</p>
@@ -261,7 +261,7 @@ export default function LeadFinderPage() {
               Found {results.length} Businesses
             </h2>
             <Link href="/leads/list">
-              <Button variant="ghost" size="sm" className="text-indigo-600 font-bold">
+              <Button variant="ghost" size="sm" className="text-red-600 font-bold">
                 View All Leads →
               </Button>
             </Link>
@@ -289,7 +289,7 @@ export default function LeadFinderPage() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-black text-slate-900 text-sm leading-tight truncate">{lead.businessName}</h3>
-                      <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mt-0.5">{lead.niche}</p>
+                      <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mt-0.5">{lead.niche}</p>
                     </div>
                   </div>
 
@@ -328,7 +328,7 @@ export default function LeadFinderPage() {
                           href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-indigo-600 font-medium truncate hover:underline flex items-center gap-1"
+                          className="text-xs text-red-600 font-medium truncate hover:underline flex items-center gap-1"
                         >
                           {lead.website.replace(/^https?:\/\//, '').split('/')[0]}
                           <ExternalLink className="h-3 w-3" />
@@ -344,7 +344,7 @@ export default function LeadFinderPage() {
                     className={`w-full h-9 rounded-xl font-bold text-xs ${
                       isSaved
                         ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default'
-                        : 'gradient-primary text-white shadow-lg shadow-indigo-500/20 hover:scale-[1.01]'
+                        : 'gradient-primary text-white shadow-lg shadow-red-500/20 hover:scale-[1.01]'
                     }`}
                   >
                     {isSaved ? (

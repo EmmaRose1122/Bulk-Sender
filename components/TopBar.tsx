@@ -24,17 +24,17 @@ export function TopBar() {
     };
 
     return (
-        <div className="flex h-16 items-center justify-between glass px-6 relative z-30">
+        <div className="flex h-16 items-center justify-between bg-white border-b border-slate-200 px-6 relative z-30">
             <div className="flex items-center gap-6">
                 <Button variant="ghost" size="icon" className="md:hidden">
                     <Menu className="h-5 w-5" />
                 </Button>
                 <div className="relative w-80 hidden md:block group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-red-500 transition-colors" />
                     <Input
                         type="search"
                         placeholder="Quick search..."
-                        className="w-full bg-slate-100/50 border-transparent focus:border-indigo-500/50 focus:bg-white pl-10 h-10 rounded-xl transition-all shadow-sm"
+                        className="w-full bg-slate-100/50 border-transparent focus:border-red-500/50 focus:bg-white pl-10 h-10 rounded-xl transition-all shadow-sm"
                     />
                 </div>
             </div>
@@ -57,22 +57,22 @@ export function TopBar() {
                         }}
                     >
                         <Bell className="h-5 w-5 text-slate-600" />
-                        <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-indigo-500 border-2 border-white" />
+                        <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white" />
                     </Button>
 
                     {showNotifications && (
                         <Card className="absolute right-0 top-full mt-3 w-80 p-5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-300 rounded-2xl glass border-slate-200">
                             <div className="flex justify-between items-center mb-6">
                                 <h4 className="font-bold text-slate-900">Activity</h4>
-                                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-700 cursor-pointer transition-colors">Mark all</span>
+                                <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest hover:text-red-700 cursor-pointer transition-colors">Mark all</span>
                             </div>
                             <div className="space-y-5">
                                 <div className="flex gap-4 items-start group cursor-pointer">
-                                    <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-500/20">
+                                    <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-white shrink-0 shadow-lg shadow-red-500/20">
                                         <Bell className="h-4 w-4" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">Campaign &quot;Flash Sale&quot; completed</p>
+                                        <p className="text-sm font-semibold text-slate-900 group-hover:text-red-600 transition-colors line-clamp-1">Campaign &quot;Flash Sale&quot; completed</p>
                                         <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-wider">Just now</p>
                                     </div>
                                 </div>
@@ -81,7 +81,7 @@ export function TopBar() {
                                         <User className="h-4 w-4" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">New Gmail account added</p>
+                                        <p className="text-sm font-semibold text-slate-900 group-hover:text-red-600 transition-colors line-clamp-1">New Gmail account added</p>
                                         <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-wider">1 hr ago</p>
                                     </div>
                                 </div>
@@ -99,7 +99,7 @@ export function TopBar() {
                             setShowNotifications(false);
                         }}
                     >
-                        <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/20 transition-transform group-hover:scale-105">
+                        <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center text-white font-bold shadow-lg shadow-red-500/20 transition-transform group-hover:scale-105">
                             U
                         </div>
                         <div className="hidden md:block">
@@ -116,11 +116,11 @@ export function TopBar() {
                             </div>
                             <div className="space-y-1">
                                 <Button variant="ghost" className="w-full justify-start text-xs font-semibold h-10 rounded-xl hover:bg-slate-50 transition-colors" onClick={() => toast.info('Profile feature coming soon')}>
-                                    <User className="mr-3 h-4 w-4 text-indigo-500" /> Account Settings
+                                    <User className="mr-3 h-4 w-4 text-red-500" /> Account Settings
                                 </Button>
                                 <Link href="/settings" passHref>
                                     <Button variant="ghost" className="w-full justify-start text-xs font-semibold h-10 rounded-xl hover:bg-slate-50 transition-colors">
-                                        <SettingsIcon className="mr-3 h-4 w-4 text-indigo-500" /> System Preferences
+                                        <SettingsIcon className="mr-3 h-4 w-4 text-red-500" /> System Preferences
                                     </Button>
                                 </Link>
                                 <div className="border-t border-slate-100 my-2 mx-2" />

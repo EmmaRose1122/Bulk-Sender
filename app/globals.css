@@ -28,11 +28,11 @@
   .glass {
     @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
   }
-  .glass-dark {
-    @apply bg-slate-900/80 backdrop-blur-lg border border-slate-700/50 shadow-2xl;
+  .glass-red {
+    @apply bg-red-950/95 backdrop-blur-xl border border-red-900/50 shadow-2xl;
   }
   .gradient-primary {
-    @apply bg-gradient-to-br from-indigo-600 via-blue-600 to-violet-600;
+    @apply bg-gradient-to-br from-red-600 via-rose-600 to-red-500;
   }
   .gradient-success {
     @apply bg-gradient-to-br from-emerald-500 to-teal-600;

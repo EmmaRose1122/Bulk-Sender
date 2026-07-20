@@ -10,7 +10,7 @@ import { cn } from '../../lib/utils';
 import { EmailLog } from '../../types/index';
 
 // Simple Circular Progress Component
-const CircularProgress = ({ value, label, subLabel, color = "indigo" }: { value: number, label: string, subLabel: string, color?: string }) => {
+const CircularProgress = ({ value, label, subLabel, color = "red" }: { value: number, label: string, subLabel: string, color?: string }) => {
     const radius = 35;
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (value / 100) * circumference;
@@ -22,7 +22,7 @@ const CircularProgress = ({ value, label, subLabel, color = "indigo" }: { value:
                     <circle cx="50" cy="50" r={radius} stroke="#f1f5f9" strokeWidth="8" fill="none" />
                     <circle
                         cx="50" cy="50" r={radius}
-                        stroke={color === 'indigo' ? '#6366f1' : color === 'emerald' ? '#10b981' : '#f43f5e'}
+                        stroke={color === 'red' ? '#6366f1' : color === 'emerald' ? '#10b981' : '#f43f5e'}
                         strokeWidth="8" fill="none"
                         strokeDasharray={circumference}
                         strokeDashoffset={offset}
@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
 
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard icon={Eye} value={stats.opens} label="Total Opens" color="bg-indigo-500" />
+                <StatCard icon={Eye} value={stats.opens} label="Total Opens" color="bg-red-500" />
                 <StatCard icon={MousePointer} value={stats.clicks} label="Total Clicks" color="bg-cyan-400" />
                 <StatCard icon={Activity} value={stats.bounces} label="Bounces" color="bg-emerald-400" />
                 <StatCard icon={UserMinus} value={stats.unsubscribes} label="Unsubscribes" color="bg-amber-300" />
@@ -185,11 +185,11 @@ export default function AnalyticsPage() {
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="grid grid-cols-1 md:grid-cols-2">
-                            <div className="p-8 flex items-center justify-center bg-indigo-50/20">
+                            <div className="p-8 flex items-center justify-center bg-red-50/20">
                                 <div className="text-center">
                                     <div className="relative inline-block">
-                                        <Globe className="h-32 w-32 text-indigo-500 mb-4 animate-[spin_20s_linear_infinite]" />
-                                        <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full -z-10 animate-pulse" />
+                                        <Globe className="h-32 w-32 text-red-500 mb-4 animate-[spin_20s_linear_infinite]" />
+                                        <div className="absolute inset-0 bg-red-500/20 blur-3xl rounded-full -z-10 animate-pulse" />
                                     </div>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Global Intelligence Network</p>
                                 </div>
@@ -211,12 +211,12 @@ export default function AnalyticsPage() {
                                         .map(([loc, count], idx) => (
                                             <div key={loc} className="flex items-center justify-between group">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                                                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 group-hover:bg-red-100 group-hover:text-red-600 transition-colors">
                                                         {idx + 1}
                                                     </div>
                                                     <span className="text-sm font-bold text-slate-700">{loc}</span>
                                                 </div>
-                                                <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">{count} <span className="text-[10px] opacity-60">OPENS</span></span>
+                                                <span className="text-xs font-black text-red-600 bg-red-50 px-2 py-1 rounded-md">{count} <span className="text-[10px] opacity-60">OPENS</span></span>
                                             </div>
                                         ))}
                                     {Object.keys(campaignHistory.flatMap(c => c.logs || []).filter(l => l.opened && l.location)).length === 0 && (
@@ -272,7 +272,7 @@ export default function AnalyticsPage() {
                                                     {log.status === 'sent' ? 'Delivered' : 'Failed'}
                                                 </span>
                                                 {log.opened ? (
-                                                    <span className="w-fit px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                                                    <span className="w-fit px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
                                                         <Eye className="h-2.5 w-2.5" /> Opened
                                                     </span>
                                                 ) : (
@@ -286,7 +286,7 @@ export default function AnalyticsPage() {
                                             {log.opened ? (
                                                 <div className="space-y-0.5">
                                                     <p className="text-[10px] font-bold text-slate-900 flex items-center gap-1 uppercase">
-                                                        <Clock className="h-3 w-3 text-indigo-500" /> {new Date(log.openedAt || 0).toLocaleTimeString()}
+                                                        <Clock className="h-3 w-3 text-red-500" /> {new Date(log.openedAt || 0).toLocaleTimeString()}
                                                     </p>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                                                         {new Date(log.openedAt || 0).toLocaleDateString()}

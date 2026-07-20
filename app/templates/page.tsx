@@ -107,7 +107,7 @@ export default function TemplatesPage() {
                     <p className="text-slate-500 font-medium mt-1">Design and manage your high-conversion email blueprints.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                    <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{templates.length} / 10 Storage Used</span>
                 </div>
             </header>
@@ -115,8 +115,8 @@ export default function TemplatesPage() {
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
                 {/* Editor Section */}
                 <div className="xl:col-span-12">
-                    <Card className="glass-dark border-none shadow-2xl p-8 rounded-3xl overflow-hidden relative">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
+                    <Card className="glass-red border-none shadow-2xl p-8 rounded-3xl overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 blur-[80px] rounded-full pointer-events-none" />
 
                         <div className="flex items-center gap-4 mb-10">
                             <div className="h-12 w-12 rounded-2xl gradient-primary flex items-center justify-center text-white shadow-xl">
@@ -130,7 +130,7 @@ export default function TemplatesPage() {
                                         <button
                                             key={opt.token}
                                             onClick={() => insertToken(opt.token, opt.fallback)}
-                                            className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-3 py-1 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/40 hover:text-white transition-all cursor-pointer active:scale-95"
+                                            className="text-[10px] font-bold text-red-300 bg-red-500/20 px-3 py-1 rounded-lg border border-red-500/30 hover:bg-red-500/40 hover:text-white transition-all cursor-pointer active:scale-95"
                                             title={`Insert {{${opt.token}|${opt.fallback}}}`}
                                         >
                                             {opt.label}
@@ -165,13 +165,13 @@ export default function TemplatesPage() {
                                 <div className="flex items-center justify-between gap-10">
                                     <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Electronic Payload (Body)</Label>
                                     <div className="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700">
-                                        <Button variant="ghost" size="sm" className={cn("h-8 rounded-lg text-[10px] uppercase font-black tracking-widest px-4", !isHtmlMode ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500")} onClick={() => setIsHtmlMode(false)}>Text</Button>
-                                        <Button variant="ghost" size="sm" className={cn("h-8 rounded-lg text-[10px] uppercase font-black tracking-widest px-4", isHtmlMode ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500")} onClick={() => setIsHtmlMode(true)}>HTML</Button>
+                                        <Button variant="ghost" size="sm" className={cn("h-8 rounded-lg text-[10px] uppercase font-black tracking-widest px-4", !isHtmlMode ? "bg-red-600 text-white shadow-lg" : "text-slate-500")} onClick={() => setIsHtmlMode(false)}>Text</Button>
+                                        <Button variant="ghost" size="sm" className={cn("h-8 rounded-lg text-[10px] uppercase font-black tracking-widest px-4", isHtmlMode ? "bg-red-600 text-white shadow-lg" : "text-slate-500")} onClick={() => setIsHtmlMode(true)}>HTML</Button>
                                     </div>
                                 </div>
                                 <textarea
                                     ref={bodyRef}
-                                    className="w-full min-h-[120px] bg-slate-800/50 border-2 border-slate-700/50 rounded-2xl p-4 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-sm"
+                                    className="w-full min-h-[120px] bg-slate-800/50 border-2 border-slate-700/50 rounded-2xl p-4 text-slate-200 focus:ring-2 focus:ring-red-500 outline-none transition-all font-mono text-sm"
                                     placeholder={isHtmlMode ? "<h1>Priority Communication...</h1>" : "Dear {{name|Friend}}, ..."}
                                     value={formData.body}
                                     onChange={(e) => setFormData({ ...formData, body: e.target.value })}
@@ -184,7 +184,7 @@ export default function TemplatesPage() {
                             {editingId && (
                                 <Button variant="ghost" onClick={handleCancel} className="h-12 px-8 rounded-xl text-slate-400 font-bold hover:text-white transition-colors">Abort Changes</Button>
                             )}
-                            <Button onClick={handleSave} className="h-12 px-10 rounded-xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:scale-[1.02] transition-all">
+                            <Button onClick={handleSave} className="h-12 px-10 rounded-xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-[1.02] transition-all">
                                 <Save className="mr-2 h-4 w-4" /> {editingId ? 'Commit Update' : 'Archive Strategy'}
                             </Button>
                         </div>
@@ -202,7 +202,7 @@ export default function TemplatesPage() {
                         {templates.map((template) => (
                             <Card key={template.id} className="group glass border-none shadow-xl p-6 hover:scale-[1.02] transition-all duration-300 cursor-pointer">
                                 <div className="flex justify-between items-start mb-6">
-                                    <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-indigo-600 group-hover:gradient-primary group-hover:text-white transition-all duration-300">
+                                    <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-red-600 group-hover:gradient-primary group-hover:text-white transition-all duration-300">
                                         <Mail className="h-5 w-5" />
                                     </div>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -211,7 +211,7 @@ export default function TemplatesPage() {
                                         <Button variant="ghost" size="icon" onClick={() => removeTemplate(template.id)} className="h-8 w-8 hover:bg-red-50 rounded-lg"><Trash2 className="h-4 w-4 text-red-500" /></Button>
                                     </div>
                                 </div>
-                                <h3 className="font-black text-slate-900 tracking-tight mb-2 group-hover:text-indigo-600 transition-colors">{template.name}</h3>
+                                <h3 className="font-black text-slate-900 tracking-tight mb-2 group-hover:text-red-600 transition-colors">{template.name}</h3>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest line-clamp-1">{template.subject}</p>
                             </Card>
                         ))}
