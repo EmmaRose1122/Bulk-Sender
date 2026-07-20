@@ -7,15 +7,17 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
 import { Checkbox } from '../../components/ui/checkbox';
-import { Trash2, Check, Plus, Server, HardDrive, Shield, Globe, Terminal, Activity, Zap, ShieldAlert, Lock } from 'lucide-react';
+import { Trash2, Check, Plus, Server, HardDrive, Shield, Globe, Terminal, Activity, Zap, ShieldAlert, Lock, Key, MapPin, Bot } from 'lucide-react';
 import { toast } from 'sonner';
 import { SmtpConfig } from '../../types/index';
 import { cn } from '../../lib/utils';
 
 export default function SettingsPage() {
-    const { smtpConfigs, addSmtpConfig, removeSmtpConfig, defaultSmtpId, setDefaultSmtpId, securityConfig, updateSecurityConfig: updateLocalSecurity } = useAppContext();
+    const { smtpConfigs, addSmtpConfig, removeSmtpConfig, defaultSmtpId, setDefaultSmtpId, securityConfig, updateSecurityConfig: updateLocalSecurity, googleApiSettings, updateGoogleApiSettings } = useAppContext();
     const [isTesting, setIsTesting] = useState<string | null>(null);
     const [newIp, setNewIp] = useState('');
+    const [placesKey, setPlacesKey] = useState(googleApiSettings.placesApiKey || '');
+    const [geminiKey, setGeminiKey] = useState(googleApiSettings.geminiApiKey || '');
 
     useEffect(() => {
         const fetchSecurity = async () => {
@@ -132,9 +134,89 @@ export default function SettingsPage() {
 
     return (
         <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+
+            {/* API Keys Section */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-950 tracking-tighter">SMTP & Sending Accounts</h1>
+                    <h1 className="text-4xl font-black text-slate-950 tracking-tighter">API Keys</h1>
+                    <p className="text-slate-500 font-medium mt-1">Configure API keys for Lead Finder and AI Follow-ups.</p>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                {/* Google Places API Key */}
+                <Card className="glass-dark border-none shadow-2xl p-8 rounded-3xl overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-green-500/10 blur-[60px] rounded-full pointer-events-none" />
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="h-12 w-12 rounded-2xl bg-green-500/20 flex items-center justify-center text-green-400">
+                            <MapPin className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-white tracking-tight">Google Places API</h2>
+                            <p className="text-slate-400 text-xs font-medium">Used by Lead Finder to find real businesses</p>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">API Key</Label>
+                        <Input
+                            type="password"
+                            value={placesKey}
+                            onChange={e => setPlacesKey(e.target.value)}
+                            placeholder="AIza..."
+                            className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium"
+                        />
+                        <p className="text-[10px] text-slate-500">Get your key at <a href="https://console.cloud.google.com/" target="_blank" className="text-indigo-400 underline">console.cloud.google.com</a> → Enable Places API</p>
+                    </div>
+                    <Button
+                        onClick={() => {
+                            updateGoogleApiSettings({ ...googleApiSettings, placesApiKey: placesKey });
+                            toast.success('Google Places API key saved!');
+                        }}
+                        className="w-full mt-6 h-12 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20"
+                    >
+                        <Key className="mr-2 h-4 w-4" /> Save API Key
+                    </Button>
+                </Card>
+
+                {/* Gemini AI API Key */}
+                <Card className="glass-dark border-none shadow-2xl p-8 rounded-3xl overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 blur-[60px] rounded-full pointer-events-none" />
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="h-12 w-12 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400">
+                            <Bot className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-white tracking-tight">Gemini AI (Optional)</h2>
+                            <p className="text-slate-400 text-xs font-medium">For AI-powered follow-up generation</p>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Gemini API Key</Label>
+                        <Input
+                            type="password"
+                            value={geminiKey}
+                            onChange={e => setGeminiKey(e.target.value)}
+                            placeholder="AIza..."
+                            className="bg-slate-800/50 border-slate-700 h-12 rounded-xl text-white font-medium"
+                        />
+                        <p className="text-[10px] text-slate-500">Get free key at <a href="https://aistudio.google.com/" target="_blank" className="text-indigo-400 underline">aistudio.google.com</a>. Without this, smart templates are used.</p>
+                    </div>
+                    <Button
+                        onClick={() => {
+                            updateGoogleApiSettings({ ...googleApiSettings, geminiApiKey: geminiKey });
+                            toast.success('Gemini API key saved!');
+                        }}
+                        className="w-full mt-6 h-12 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black uppercase tracking-widest shadow-xl shadow-purple-500/20"
+                    >
+                        <Key className="mr-2 h-4 w-4" /> Save API Key
+                    </Button>
+                </Card>
+            </div>
+
+
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <h1 className="text-4xl font-black text-slate-950 tracking-tighter">SMTP &amp; Sending Accounts</h1>
                     <p className="text-slate-500 font-medium mt-1">Connect your custom SMTP servers (Gmail, Outlook, SendGrid, etc).</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -142,6 +224,7 @@ export default function SettingsPage() {
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{smtpConfigs.length} Relay Configs</span>
                 </div>
             </header>
+
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
                 {/* Add Section */}

@@ -85,3 +85,49 @@ export interface InboundMessage {
 export interface SecurityConfig {
   ipAllowlist: string[];
 }
+
+export interface CommunicationEntry {
+  id: string;
+  type: 'email_sent' | 'email_received' | 'note' | 'followup_sent';
+  subject?: string;
+  body?: string;
+  sentAt: number;
+}
+
+export type LeadStatus = 'new' | 'contacted' | 'replied' | 'interested' | 'closed';
+
+export interface Lead {
+  id: string;
+  businessName: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  address?: string;
+  niche: string;
+  city: string;
+  country: string;
+  status: LeadStatus;
+  notes?: string;
+  communicationHistory: CommunicationEntry[];
+  createdAt: number;
+  lastContactedAt?: number;
+}
+
+export type FollowUpStatus = 'pending' | 'approved' | 'sent' | 'skipped';
+
+export interface FollowUp {
+  id: string;
+  leadId: string;
+  leadName: string;
+  leadEmail: string;
+  subject: string;
+  body: string;
+  status: FollowUpStatus;
+  createdAt: number;
+  sentAt?: number;
+}
+
+export interface GoogleApiSettings {
+  placesApiKey?: string;
+  geminiApiKey?: string;
+}

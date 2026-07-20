@@ -2,11 +2,36 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageSquare, ListTodo, BarChart3, Users, Globe, Mail, Settings } from 'lucide-react';
+import { MessageSquare, ListTodo, BarChart3, Users, Globe, Mail, Settings, Search, UserCheck, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAppContext } from '../context/AppContext';
 
 export function Sidebar() {
     const pathname = usePathname();
+    const { followUps } = useAppContext();
+    const pendingFollowUps = followUps.filter(f => f.status === 'pending').length;
+
+    const navItem = (href: string, label: string, Icon: any, badge?: number) => (
+        <li key={href}>
+            <Link
+                href={href}
+                className={cn(
+                    'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
+                    pathname === href
+                        ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
+                        : 'hover:bg-slate-800/50 hover:text-white'
+                )}
+            >
+                <Icon className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === href ? "text-white" : "text-indigo-400")} />
+                {label}
+                {badge != null && badge > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white px-1">
+                        {badge}
+                    </span>
+                )}
+            </Link>
+        </li>
+    );
 
     return (
         <div className="flex h-screen w-64 flex-col glass-dark text-slate-400 border-r border-slate-800/50">
@@ -20,114 +45,34 @@ export function Sidebar() {
                     </span>
                 </Link>
             </div>
-            <nav className="flex-1 overflow-y-auto py-8">
-                <ul className="grid gap-1 px-4">
-                    <li>
-                        <Link
-                            href="/"
-                            className={cn(
-                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
-                                pathname === '/'
-                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
-                                    : 'hover:bg-slate-800/50 hover:text-white'
-                            )}
-                        >
-                            <ListTodo className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/' ? "text-white" : "text-indigo-400")} />
-                            Campaign
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/profiles"
-                            className={cn(
-                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
-                                pathname === '/profiles'
-                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
-                                    : 'hover:bg-slate-800/50 hover:text-white'
-                            )}
-                        >
-                            <Users className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/profiles' ? "text-white" : "text-indigo-400")} />
-                            Gmail Accounts
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/templates"
-                            className={cn(
-                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
-                                pathname === '/templates'
-                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
-                                    : 'hover:bg-slate-800/50 hover:text-white'
-                            )}
-                        >
-                            <MessageSquare className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/templates' ? "text-white" : "text-indigo-400")} />
-                            Templates
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/settings"
-                            className={cn(
-                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
-                                pathname === '/settings'
-                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
-                                    : 'hover:bg-slate-800/50 hover:text-white'
-                            )}
-                        >
-                            <Settings className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/settings' ? "text-white" : "text-indigo-400")} />
-                            SMTP Settings
-                        </Link>
-                    </li>
+
+            <nav className="flex-1 overflow-y-auto py-6">
+                {/* Campaigns */}
+                <div className="px-6 text-[10px] font-bold uppercase text-slate-500 tracking-[0.2em] mb-3">Campaigns</div>
+                <ul className="grid gap-1 px-4 mb-6">
+                    {navItem('/', 'Campaign', ListTodo)}
+                    {navItem('/profiles', 'Gmail Accounts', Users)}
+                    {navItem('/templates', 'Templates', MessageSquare)}
+                    {navItem('/settings', 'SMTP Settings', Settings)}
                 </ul>
 
-                <div className="mt-10 px-6 text-[10px] font-bold uppercase text-slate-500 tracking-[0.2em]">
-                    Insights
-                </div>
-                <ul className="grid gap-1 px-4 mt-3">
-                    <li>
-                        <Link
-                            href="/analytics"
-                            className={cn(
-                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
-                                pathname === '/analytics'
-                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
-                                    : 'hover:bg-slate-800/50 hover:text-white'
-                            )}
-                        >
-                            <BarChart3 className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/analytics' ? "text-white" : "text-indigo-400")} />
-                            Reports
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/domains"
-                            className={cn(
-                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
-                                pathname === '/domains'
-                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
-                                    : 'hover:bg-slate-800/50 hover:text-white'
-                            )}
-                        >
-                            <Globe className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/domains' ? "text-white" : "text-indigo-400")} />
-                            Domains
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            href="/inbound"
-                            className={cn(
-                                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 group',
-                                pathname === '/inbound'
-                                    ? 'gradient-primary text-white shadow-xl shadow-indigo-500/20'
-                                    : 'hover:bg-slate-800/50 hover:text-white'
-                            )}
-                        >
-                            <Mail className={cn("h-5 w-5 transition-transform group-hover:scale-110", pathname === '/inbound' ? "text-white" : "text-indigo-400")} />
-                            Inbound Hub
-                        </Link>
-                    </li>
+                {/* Lead CRM */}
+                <div className="px-6 text-[10px] font-bold uppercase text-slate-500 tracking-[0.2em] mb-3">Lead CRM</div>
+                <ul className="grid gap-1 px-4 mb-6">
+                    {navItem('/leads', 'Lead Finder', Search)}
+                    {navItem('/leads/list', 'Leads', UserCheck)}
+                    {navItem('/followups', 'Follow-ups', Clock, pendingFollowUps)}
+                </ul>
+
+                {/* Insights */}
+                <div className="px-6 text-[10px] font-bold uppercase text-slate-500 tracking-[0.2em] mb-3">Insights</div>
+                <ul className="grid gap-1 px-4">
+                    {navItem('/analytics', 'Reports', BarChart3)}
+                    {navItem('/domains', 'Domains', Globe)}
+                    {navItem('/inbound', 'Inbound Hub', Mail)}
                 </ul>
             </nav>
+
             <div className="p-4 mt-auto border-t border-slate-800/50">
                 <div className="bg-slate-800/30 rounded-2xl p-4 border border-slate-700/30">
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Plan Usage</p>
@@ -140,3 +85,5 @@ export function Sidebar() {
         </div>
     );
 }
+
+

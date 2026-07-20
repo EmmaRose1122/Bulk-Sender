@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { SmtpConfig, EmailTemplate, Campaign, AccountProfile, Domain, InboundMessage, SecurityConfig } from '../types/index';
+import { SmtpConfig, EmailTemplate, Campaign, AccountProfile, Domain, InboundMessage, SecurityConfig, Lead, FollowUp, GoogleApiSettings } from '../types/index';
 
 interface ActiveCampaignState {
     id: string;
@@ -62,6 +62,20 @@ interface AppContextType {
     activeCampaign: ActiveCampaignState | null;
     setActiveCampaign: (campaign: ActiveCampaignState | null) => void;
     updateActiveCampaign: (updates: Partial<ActiveCampaignState>) => void;
+
+    leads: Lead[];
+    addLead: (lead: Lead) => void;
+    addLeads: (leads: Lead[]) => void;
+    updateLead: (lead: Lead) => void;
+    removeLead: (id: string) => void;
+
+    followUps: FollowUp[];
+    addFollowUp: (fu: FollowUp) => void;
+    updateFollowUp: (fu: FollowUp) => void;
+    removeFollowUp: (id: string) => void;
+
+    googleApiSettings: GoogleApiSettings;
+    updateGoogleApiSettings: (settings: GoogleApiSettings) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -76,6 +90,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     const [inboundMessages, setInboundMessages] = useLocalStorage<InboundMessage[]>('inbound_hub', []);
     const [securityConfig, setSecurityConfig] = useLocalStorage<SecurityConfig>('security_settings', { ipAllowlist: [] });
     const [activeCampaign, setActiveCampaign] = useLocalStorage<ActiveCampaignState | null>('active_campaign', null);
+    const [leads, setLeads] = useLocalStorage<Lead[]>('leads', []);
+    const [followUps, setFollowUps] = useLocalStorage<FollowUp[]>('follow_ups', []);
+    const [googleApiSettings, setGoogleApiSettings] = useLocalStorage<GoogleApiSettings>('google_api_settings', {});
 
     // Ensure defaultSmtpId is valid
     useEffect(() => {
@@ -194,6 +211,49 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         setActiveCampaign(prev => prev ? { ...prev, ...updates } : null);
     };
 
+    const addLead = (lead: Lead) => {
+        setLeads(prev => {
+            const exists = prev.find(l => l.businessName === lead.businessName && (l.email === lead.email || l.phone === lead.phone));
+            if (exists) return prev;
+            return [lead, ...prev];
+        });
+    };
+
+    const addLeads = (newLeads: Lead[]) => {
+        setLeads(prev => {
+            const merged = [...prev];
+            for (const lead of newLeads) {
+                const exists = merged.find(l => l.businessName === lead.businessName && (l.email === lead.email || l.phone === lead.phone));
+                if (!exists) merged.unshift(lead);
+            }
+            return merged;
+        });
+    };
+
+    const updateLead = (lead: Lead) => {
+        setLeads(prev => prev.map(l => l.id === lead.id ? lead : l));
+    };
+
+    const removeLead = (id: string) => {
+        setLeads(prev => prev.filter(l => l.id !== id));
+    };
+
+    const addFollowUp = (fu: FollowUp) => {
+        setFollowUps(prev => [fu, ...prev]);
+    };
+
+    const updateFollowUp = (fu: FollowUp) => {
+        setFollowUps(prev => prev.map(f => f.id === fu.id ? fu : f));
+    };
+
+    const removeFollowUp = (id: string) => {
+        setFollowUps(prev => prev.filter(f => f.id !== id));
+    };
+
+    const updateGoogleApiSettings = (settings: GoogleApiSettings) => {
+        setGoogleApiSettings(settings);
+    };
+
     return (
         <AppContext.Provider
             value={{
@@ -228,6 +288,17 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
                 activeCampaign,
                 setActiveCampaign,
                 updateActiveCampaign,
+                leads,
+                addLead,
+                addLeads,
+                updateLead,
+                removeLead,
+                followUps,
+                addFollowUp,
+                updateFollowUp,
+                removeFollowUp,
+                googleApiSettings,
+                updateGoogleApiSettings,
             }}
         >
             {children}
