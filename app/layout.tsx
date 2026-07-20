@@ -22,16 +22,16 @@ export default function RootLayout({
     <html lang="en" className="light" suppressHydrationWarning>
       <body className={`${inter.className} bg-slate-50 text-slate-900 min-h-screen flex`} suppressHydrationWarning>
         <AppContextProvider>
-          <div className="flex w-full h-screen overflow-hidden">
-            <div className="hidden md:block flex-shrink-0">
+          <div className="flex w-full h-screen overflow-hidden" suppressHydrationWarning>
+            <div className="hidden md:block flex-shrink-0" suppressHydrationWarning>
               <Sidebar />
             </div>
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 flex flex-col h-full overflow-hidden" suppressHydrationWarning>
               <TopBar />
-              <main className="flex-1 overflow-y-auto p-4 md:p-10 lg:p-12 relative">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
-                <div className="relative z-10 max-w-7xl mx-auto">
+              <main className="flex-1 overflow-y-auto p-4 md:p-10 lg:p-12 relative" suppressHydrationWarning>
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" suppressHydrationWarning />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" suppressHydrationWarning />
+                <div className="relative z-10 max-w-7xl mx-auto" suppressHydrationWarning>
                   {children}
                 </div>
               </main>
@@ -39,6 +39,7 @@ export default function RootLayout({
           </div>
           <Toaster richColors position="top-right" />
         </AppContextProvider>
+
       </body>
     </html>
   );
