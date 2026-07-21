@@ -26,12 +26,11 @@ function extractEmails(text: string): string[] {
     'example.org', 'wixpress.com', 'squarespace.com', 'wordpress.com',
     'gravatar.com', 'yourdomain.com', 'email.com', 'test.com',
     'yourcompany.com', 'company.com', 'domain.com', 'website.com',
+    'yellowpages.com', 'ypcdn.com', 'yp.com',
   ];
   const valid = matches.filter(e =>
     !blacklist.some(bl => e.toLowerCase().includes(bl)) &&
-    !e.includes('..') &&
-    e.length < 60 &&
-    !e.startsWith('.')
+    !e.includes('..') && e.length < 60 && !e.startsWith('.')
   );
   return Array.from(new Set(valid));
 }
@@ -55,8 +54,6 @@ async function fetchPage(url: string, timeoutMs = 8000): Promise<string> {
         'User-Agent': getRandomUA(),
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate',
-        'Connection': 'keep-alive',
       },
       signal: controller.signal,
       redirect: 'follow',
@@ -69,83 +66,135 @@ async function fetchPage(url: string, timeoutMs = 8000): Promise<string> {
   }
 }
 
-// Strategy 1: DuckDuckGo HTML (most reliable from servers)
-async function searchDuckDuckGo(query: string): Promise<{ title: string; link: string }[]> {
-  const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-  const html = await fetchPage(ddgUrl, 12000);
-  if (!html) return [];
+// ==================== SOURCE 1: YELLOW PAGES ====================
+async function searchYellowPages(niche: string, city: string): Promise<{ name: string; phone: string; website: string; address: string }[]> {
+  const results: { name: string; phone: string; website: string; address: string }[] = [];
+  try {
+    const url = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(niche)}&geo_location_terms=${encodeURIComponent(city)}`;
+    console.log(`[YP] Fetching: ${url}`);
+    const html = await fetchPage(url, 12000);
+    if (!html || html.length < 1000) return results;
 
-  const results: { title: string; link: string }[] = [];
+    // Parse Yellow Pages listings
+    // Each result has: class="result", data-company-name, phone in <div class="phones">, website link
+    const listingRegex = /<div[^>]*class="[^"]*result[^"]*"[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi;
+    const listings = html.match(listingRegex) || [];
 
-  // DuckDuckGo result links
-  const linkRegex = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-  let match;
-  while ((match = linkRegex.exec(html)) !== null) {
-    let link = decodeURIComponent(match[1]);
-    // DDG wraps links through redirects
-    if (link.includes('uddg=')) {
-      const uddgMatch = link.match(/uddg=([^&]+)/);
-      if (uddgMatch) link = decodeURIComponent(uddgMatch[1]);
+    // Alternate simpler approach: extract structured data
+    // Business name from <a class="business-name">
+    const nameRegex = /<a[^>]*class="[^"]*business-name[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
+    const phoneRegex = /<div[^>]*class="[^"]*phones[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+    const addrRegex = /<div[^>]*class="[^"]*adr[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+    const webRegex = /<a[^>]*class="[^"]*track-visit-website[^"]*"[^>]*href="([^"]+)"/gi;
+
+    const names: string[] = [];
+    const phones: string[] = [];
+    const addresses: string[] = [];
+    const websites: string[] = [];
+
+    let m;
+    while ((m = nameRegex.exec(html)) !== null) {
+      names.push(m[1].replace(/<[^>]*>/g, '').trim());
     }
-    const title = match[2].replace(/<[^>]*>/g, '').trim();
-    if (link.startsWith('http') && title && !link.includes('duckduckgo.com')) {
-      results.push({ title, link });
+    while ((m = phoneRegex.exec(html)) !== null) {
+      phones.push(m[1].replace(/<[^>]*>/g, '').trim());
     }
+    while ((m = addrRegex.exec(html)) !== null) {
+      addresses.push(m[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim());
+    }
+    while ((m = webRegex.exec(html)) !== null) {
+      websites.push(m[1]);
+    }
+
+    // Match up results
+    for (let i = 0; i < names.length; i++) {
+      results.push({
+        name: names[i] || '',
+        phone: phones[i] || '',
+        address: addresses[i] || '',
+        website: websites[i] || '',
+      });
+    }
+
+    console.log(`[YP] Found ${results.length} listings`);
+  } catch (err) {
+    console.error('[YP] Error:', err);
   }
-
   return results;
 }
 
-// Strategy 2: Bing search (more server-friendly than Google)
+// ==================== SOURCE 2: SEARXNG (Meta Search) ====================
+async function searchSearXNG(query: string): Promise<{ title: string; link: string }[]> {
+  // Public SearXNG instances that support JSON API
+  const instances = [
+    'https://search.sapti.me',
+    'https://searx.be',
+    'https://search.bus-hit.me',
+    'https://searx.tiekoetter.com',
+    'https://search.ononoki.org',
+  ];
+
+  for (const instance of instances) {
+    try {
+      const url = `${instance}/search?q=${encodeURIComponent(query)}&format=json&categories=general`;
+      console.log(`[SearXNG] Trying: ${instance}`);
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': getRandomUA(),
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      if (data.results && data.results.length > 0) {
+        console.log(`[SearXNG] ${instance} returned ${data.results.length} results`);
+        return data.results.map((r: any) => ({
+          title: r.title || '',
+          link: r.url || '',
+        })).filter((r: any) => r.title && r.link && r.link.startsWith('http'));
+      }
+    } catch {
+      console.log(`[SearXNG] ${instance} failed, trying next...`);
+    }
+  }
+
+  return [];
+}
+
+// ==================== SOURCE 3: BING (Backup) ====================
 async function searchBing(query: string, count: number): Promise<{ title: string; link: string }[]> {
-  const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${count}`;
-  const html = await fetchPage(bingUrl, 12000);
-  if (!html) return [];
+  try {
+    const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${count}`;
+    console.log(`[Bing] Fetching...`);
+    const html = await fetchPage(bingUrl, 12000);
+    if (!html || html.length < 2000) return [];
 
-  const results: { title: string; link: string }[] = [];
-
-  // Bing results: <li class="b_algo"><h2><a href="URL">Title</a></h2>
-  const resultRegex = /<li\s+class="b_algo"[\s\S]*?<h2>\s*<a\s+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-  let match;
-  while ((match = resultRegex.exec(html)) !== null) {
-    const link = match[1];
-    const title = match[2].replace(/<[^>]*>/g, '').trim();
-    if (link.startsWith('http') && title) {
-      results.push({ title, link });
+    const results: { title: string; link: string }[] = [];
+    const resultRegex = /<li\s+class="b_algo"[\s\S]*?<h2>\s*<a\s+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+    let match;
+    while ((match = resultRegex.exec(html)) !== null) {
+      const link = match[1];
+      const title = match[2].replace(/<[^>]*>/g, '').trim();
+      if (link.startsWith('http') && title) {
+        results.push({ title, link });
+      }
     }
+    console.log(`[Bing] Found ${results.length} results`);
+    return results;
+  } catch {
+    return [];
   }
-
-  return results;
 }
 
-// Strategy 3: Google search (might be blocked from servers)
-async function searchGoogle(query: string, count: number): Promise<{ title: string; link: string }[]> {
-  const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${count}&hl=en`;
-  const html = await fetchPage(googleUrl, 10000);
-  if (!html || html.length < 5000) return [];
-
-  const results: { title: string; link: string }[] = [];
-
-  const linkRegex = /<a[^>]+href="\/url\?q=([^"&]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
-  let match;
-  while ((match = linkRegex.exec(html)) !== null) {
-    const rawUrl = decodeURIComponent(match[1]);
-    const innerHtml = match[2];
-    if (rawUrl.includes('google.com') || rawUrl.includes('youtube.com')) continue;
-    if (!rawUrl.startsWith('http')) continue;
-
-    const h3Match = innerHtml.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
-    const title = h3Match ? h3Match[1].replace(/<[^>]*>/g, '').trim() : '';
-    if (!title) continue;
-
-    results.push({ title, link: rawUrl });
-  }
-
-  return results;
-}
-
-// Deep scrape: visit website + contact page for email/phone
-async function scrapeBusinessDetails(url: string): Promise<{ email: string; phone: string }> {
+// Deep scrape a business website for email
+async function scrapeWebsiteForEmail(url: string): Promise<{ email: string; phone: string }> {
   let foundEmail = '';
   let foundPhone = '';
 
@@ -158,8 +207,8 @@ async function scrapeBusinessDetails(url: string): Promise<{ email: string; phon
   if (emails.length > 0) foundEmail = emails[0];
   if (phones.length > 0) foundPhone = phones[0];
 
-  // Try contact/about page if email not found
-  if (!foundEmail || !foundPhone) {
+  // Try contact/about page
+  if (!foundEmail) {
     const contactMatch = pageHtml.match(/href="([^"]*(?:contact|about|reach|connect)[^"]*)"/i);
     if (contactMatch) {
       let contactUrl = contactMatch[1];
@@ -197,63 +246,42 @@ export async function POST(request: Request) {
     }
 
     const maxItems = Math.min(maxResults || 10, 100);
-
     const encoder = new TextEncoder();
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
 
     (async () => {
       let totalFound = 0;
+      const seenNames = new Set<string>();
 
       try {
-        const query = `${niche} in ${city} ${country} contact email`;
-        console.log(`[LeadFinder] Searching: "${query}"`);
+        console.log(`[LeadFinder] Starting search: ${niche} in ${city}, ${country}`);
 
-        // Try all search engines in order of reliability from server
-        let searchResults: { title: string; link: string }[] = [];
+        // ====== PHASE 1: Yellow Pages (best for structured business data) ======
+        const ypResults = await searchYellowPages(niche, city);
 
-        // 1. DuckDuckGo (most reliable from servers)
-        console.log('[LeadFinder] Trying DuckDuckGo...');
-        searchResults = await searchDuckDuckGo(query);
-        console.log(`[LeadFinder] DuckDuckGo: ${searchResults.length} results`);
+        for (let i = 0; i < Math.min(ypResults.length, maxItems); i++) {
+          const biz = ypResults[i];
+          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
+          seenNames.add(biz.name.toLowerCase());
 
-        // 2. Bing fallback
-        if (searchResults.length === 0) {
-          console.log('[LeadFinder] Trying Bing...');
-          searchResults = await searchBing(query, maxItems);
-          console.log(`[LeadFinder] Bing: ${searchResults.length} results`);
-        }
+          let email = '';
+          let phone = biz.phone;
 
-        // 3. Google fallback
-        if (searchResults.length === 0) {
-          console.log('[LeadFinder] Trying Google...');
-          searchResults = await searchGoogle(query, maxItems);
-          console.log(`[LeadFinder] Google: ${searchResults.length} results`);
-        }
-
-        // If no search engine worked
-        if (searchResults.length === 0) {
-          await writer.write(encoder.encode(
-            JSON.stringify({ _error: true, message: 'No results found. Search engines may be rate-limiting. Please wait a moment and try again.' }) + '\n'
-          ));
-          await writer.close();
-          return;
-        }
-
-        // Process each result
-        for (let i = 0; i < Math.min(searchResults.length, maxItems); i++) {
-          const result = searchResults[i];
-
-          // Deep scrape each business site
-          const details = await scrapeBusinessDetails(result.link);
+          // If YP gave us a website, scrape it for email
+          if (biz.website) {
+            const details = await scrapeWebsiteForEmail(biz.website);
+            email = details.email;
+            if (!phone && details.phone) phone = details.phone;
+          }
 
           const lead = {
             id: crypto.randomUUID(),
-            businessName: result.title.replace(/\|.*/, '').replace(/-\s*$/, '').trim() || 'Unknown Business',
-            email: details.email,
-            phone: details.phone,
-            website: result.link,
-            address: `${city}, ${country}`,
+            businessName: biz.name,
+            email,
+            phone,
+            website: biz.website,
+            address: biz.address || `${city}, ${country}`,
             niche, city, country,
             status: 'new', notes: '',
             communicationHistory: [],
@@ -262,20 +290,88 @@ export async function POST(request: Request) {
 
           totalFound++;
           await writer.write(encoder.encode(JSON.stringify(lead) + '\n'));
-
-          // Rate limit
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 200));
         }
 
-        // Send final summary
-        await writer.write(encoder.encode(
-          JSON.stringify({ _done: true, total: totalFound }) + '\n'
-        ));
+        // ====== PHASE 2: SearXNG meta-search (if need more results) ======
+        if (totalFound < maxItems) {
+          const query = `${niche} in ${city} ${country} contact email`;
+          const searxResults = await searchSearXNG(query);
+
+          for (let i = 0; i < Math.min(searxResults.length, maxItems - totalFound); i++) {
+            const result = searxResults[i];
+            const cleanName = result.title.replace(/\|.*/, '').replace(/-\s*$/, '').trim();
+            if (!cleanName || seenNames.has(cleanName.toLowerCase())) continue;
+            seenNames.add(cleanName.toLowerCase());
+
+            const details = await scrapeWebsiteForEmail(result.link);
+
+            const lead = {
+              id: crypto.randomUUID(),
+              businessName: cleanName,
+              email: details.email,
+              phone: details.phone,
+              website: result.link,
+              address: `${city}, ${country}`,
+              niche, city, country,
+              status: 'new', notes: '',
+              communicationHistory: [],
+              createdAt: Date.now(),
+            };
+
+            totalFound++;
+            await writer.write(encoder.encode(JSON.stringify(lead) + '\n'));
+            await new Promise(r => setTimeout(r, 300));
+          }
+        }
+
+        // ====== PHASE 3: Bing fallback ======
+        if (totalFound < maxItems) {
+          const query = `${niche} in ${city} ${country} contact`;
+          const bingResults = await searchBing(query, maxItems - totalFound);
+
+          for (let i = 0; i < Math.min(bingResults.length, maxItems - totalFound); i++) {
+            const result = bingResults[i];
+            const cleanName = result.title.replace(/\|.*/, '').replace(/-\s*$/, '').trim();
+            if (!cleanName || seenNames.has(cleanName.toLowerCase())) continue;
+            seenNames.add(cleanName.toLowerCase());
+
+            const details = await scrapeWebsiteForEmail(result.link);
+
+            const lead = {
+              id: crypto.randomUUID(),
+              businessName: cleanName,
+              email: details.email,
+              phone: details.phone,
+              website: result.link,
+              address: `${city}, ${country}`,
+              niche, city, country,
+              status: 'new', notes: '',
+              communicationHistory: [],
+              createdAt: Date.now(),
+            };
+
+            totalFound++;
+            await writer.write(encoder.encode(JSON.stringify(lead) + '\n'));
+            await new Promise(r => setTimeout(r, 300));
+          }
+        }
+
+        // Final status
+        if (totalFound === 0) {
+          await writer.write(encoder.encode(
+            JSON.stringify({ _error: true, message: `No businesses found for "${niche}" in "${city}". Try a broader niche or larger city.` }) + '\n'
+          ));
+        } else {
+          await writer.write(encoder.encode(
+            JSON.stringify({ _done: true, total: totalFound }) + '\n'
+          ));
+        }
 
       } catch (error) {
-        console.error('[LeadFinder] Stream error:', error);
+        console.error('[LeadFinder] Error:', error);
         await writer.write(encoder.encode(
-          JSON.stringify({ _error: true, message: 'An error occurred during scraping. Please try again.' }) + '\n'
+          JSON.stringify({ _error: true, message: 'Scraping error occurred. Please try again.' }) + '\n'
         ));
       } finally {
         try { await writer.close(); } catch {}
