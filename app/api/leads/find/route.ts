@@ -66,6 +66,118 @@ async function fetchPage(url: string, timeoutMs = 8000): Promise<string> {
   }
 }
 
+// ==================== SOURCE 0: GOOGLE MAPS (No API Key) ====================
+async function searchGoogleMaps(niche: string, city: string, country: string): Promise<{ name: string; phone: string; website: string; address: string; rating: string }[]> {
+  const results: { name: string; phone: string; website: string; address: string; rating: string }[] = [];
+  try {
+    const query = `${niche} in ${city}, ${country}`;
+    // Google Maps search URL — returns HTML with embedded JSON data
+    const url = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
+    console.log(`[GMaps] Fetching: ${url}`);
+
+    const html = await fetchPage(url, 15000);
+    if (!html || html.length < 3000) {
+      console.log('[GMaps] Empty or blocked response');
+      return results;
+    }
+
+    // Google Maps embeds business data in the HTML page as JSON arrays
+    // Pattern: look for arrays containing business info between certain markers
+
+    // Method 1: Extract from window.APP_INITIALIZATION_STATE or embedded JSON
+    // Business names appear near phone numbers and addresses in predictable patterns
+
+    // Extract business names — they appear in specific JSON string patterns
+    // Pattern: ["BusinessName",null,null,null,null,null,null,["address"]
+    const namePattern = /\["([^"]{3,60})",null,null,null,null,null,null,\[/g;
+    let nameMatch;
+    const rawNames: string[] = [];
+    while ((nameMatch = namePattern.exec(html)) !== null) {
+      const name = nameMatch[1];
+      if (name && !name.includes('\\') && !name.startsWith('http') && name.length > 2) {
+        rawNames.push(name);
+      }
+    }
+
+    // Method 2: Extract phone numbers — format like "+1 234-567-8901" in JSON strings
+    const allPhones = extractPhones(html);
+
+    // Method 3: Extract addresses — look for street-like patterns near business data
+    const addrPattern = /\["([^"]*\d+[^"]*(?:St|Ave|Rd|Blvd|Dr|Ln|Way|Ct|Pl|Hwy|Suite|Floor|#)[^"]*)"/gi;
+    let addrMatch;
+    const rawAddresses: string[] = [];
+    while ((addrMatch = addrPattern.exec(html)) !== null) {
+      rawAddresses.push(addrMatch[1]);
+    }
+
+    // Method 4: Extract websites from the embedded data
+    const websitePattern = /\["(https?:\/\/(?!www\.google|maps\.google|play\.google|support\.google|accounts\.google|policies\.google)[^"]+)"/g;
+    let webMatch;
+    const rawWebsites: string[] = [];
+    while ((webMatch = websitePattern.exec(html)) !== null) {
+      const url = webMatch[1];
+      if (!url.includes('google.com') && !url.includes('gstatic.com') && !url.includes('googleapis.com') && url.length < 200) {
+        rawWebsites.push(url);
+      }
+    }
+
+    // Method 5: Extract ratings
+    const ratingPattern = /(\d\.\d),\s*"(\d+)\s*reviews?"/gi;
+    let ratingMatch;
+    const rawRatings: string[] = [];
+    while ((ratingMatch = ratingPattern.exec(html)) !== null) {
+      rawRatings.push(`${ratingMatch[1]} (${ratingMatch[2]} reviews)`);
+    }
+
+    // Method 6: Better structured extraction — search for patterns like:
+    // [null,"BusinessName"] followed by address and phone data
+    const structuredPattern = /\[null,"([^"]{3,60})"\s*(?:,null)*\s*,\s*"([^"]*)"(?:[\s\S]{0,500}?)(\+?\d[\d\s\-().]{8,18}\d)/g;
+    let structMatch;
+    while ((structMatch = structuredPattern.exec(html)) !== null) {
+      const name = structMatch[1];
+      const possibleAddr = structMatch[2];
+      const phone = structMatch[3];
+      if (name && !name.startsWith('http') && name.length > 2) {
+        results.push({
+          name,
+          phone: phone || '',
+          address: possibleAddr || `${city}, ${country}`,
+          website: '',
+          rating: '',
+        });
+      }
+    }
+
+    // If structured extraction didn't work, fall back to matching arrays
+    if (results.length === 0 && rawNames.length > 0) {
+      for (let i = 0; i < rawNames.length; i++) {
+        results.push({
+          name: rawNames[i],
+          phone: allPhones[i] || '',
+          address: rawAddresses[i] || `${city}, ${country}`,
+          website: rawWebsites[i] || '',
+          rating: rawRatings[i] || '',
+        });
+      }
+    }
+
+    // Deduplicate by name
+    const seen = new Set<string>();
+    const deduped = results.filter(r => {
+      const key = r.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    console.log(`[GMaps] Found ${deduped.length} businesses`);
+    return deduped;
+  } catch (err) {
+    console.error('[GMaps] Error:', err);
+    return results;
+  }
+}
+
 // ==================== SOURCE 1: YELLOW PAGES ====================
 async function searchYellowPages(niche: string, city: string): Promise<{ name: string; phone: string; website: string; address: string }[]> {
   const results: { name: string; phone: string; website: string; address: string }[] = [];
@@ -257,10 +369,47 @@ export async function POST(request: Request) {
       try {
         console.log(`[LeadFinder] Starting search: ${niche} in ${city}, ${country}`);
 
+        // ====== PHASE 0: Google Maps (best structured data, no API key) ======
+        const gmapsResults = await searchGoogleMaps(niche, city, country);
+
+        for (let i = 0; i < Math.min(gmapsResults.length, maxItems); i++) {
+          const biz = gmapsResults[i];
+          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
+          seenNames.add(biz.name.toLowerCase());
+
+          let email = '';
+          let phone = biz.phone;
+
+          // If Maps gave us a website, scrape it for email
+          if (biz.website) {
+            const details = await scrapeWebsiteForEmail(biz.website);
+            email = details.email;
+            if (!phone && details.phone) phone = details.phone;
+          }
+
+          const lead = {
+            id: crypto.randomUUID(),
+            businessName: biz.name,
+            email,
+            phone,
+            website: biz.website,
+            address: biz.address || `${city}, ${country}`,
+            niche, city, country,
+            status: 'new', notes: biz.rating ? `Rating: ${biz.rating}` : '',
+            communicationHistory: [],
+            createdAt: Date.now(),
+          };
+
+          totalFound++;
+          await writer.write(encoder.encode(JSON.stringify(lead) + '\n'));
+          await new Promise(r => setTimeout(r, 200));
+        }
+
         // ====== PHASE 1: Yellow Pages (best for structured business data) ======
+        if (totalFound < maxItems) {
         const ypResults = await searchYellowPages(niche, city);
 
-        for (let i = 0; i < Math.min(ypResults.length, maxItems); i++) {
+        for (let i = 0; i < Math.min(ypResults.length, maxItems - totalFound); i++) {
           const biz = ypResults[i];
           if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
           seenNames.add(biz.name.toLowerCase());
@@ -291,6 +440,7 @@ export async function POST(request: Request) {
           totalFound++;
           await writer.write(encoder.encode(JSON.stringify(lead) + '\n'));
           await new Promise(r => setTimeout(r, 200));
+        }
         }
 
         // ====== PHASE 2: SearXNG meta-search (if need more results) ======
