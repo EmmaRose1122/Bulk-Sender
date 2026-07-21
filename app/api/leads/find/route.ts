@@ -26,7 +26,7 @@ function extractEmails(text: string): string[] {
     'example.org', 'wixpress.com', 'squarespace.com', 'wordpress.com',
     'gravatar.com', 'yourdomain.com', 'email.com', 'test.com',
     'yourcompany.com', 'company.com', 'domain.com', 'website.com',
-    'yellowpages.com', 'ypcdn.com', 'yp.com',
+    'yellowpages.com', 'yelp.com', 'yelpcdn.com',
   ];
   const valid = matches.filter(e =>
     !blacklist.some(bl => e.toLowerCase().includes(bl)) &&
@@ -66,243 +66,111 @@ async function fetchPage(url: string, timeoutMs = 8000): Promise<string> {
   }
 }
 
-// ==================== SOURCE 0: GOOGLE MAPS (No API Key) ====================
-async function searchGoogleMaps(niche: string, city: string, country: string): Promise<{ name: string; phone: string; website: string; address: string; rating: string }[]> {
-  const results: { name: string; phone: string; website: string; address: string; rating: string }[] = [];
-  try {
-    const query = `${niche} in ${city}, ${country}`;
-    // Google Maps search URL — returns HTML with embedded JSON data
-    const url = `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
-    console.log(`[GMaps] Fetching: ${url}`);
+// ==================== SOURCE 1: YELP (Primary — works from servers!) ====================
+interface YelpBusiness {
+  name: string;
+  phone: string;
+  rating: number;
+  reviewCount: number;
+  address: string;
+  website: string;
+  yelpUrl: string;
+  neighborhoods: string;
+}
 
+async function searchYelp(niche: string, city: string): Promise<YelpBusiness[]> {
+  const results: YelpBusiness[] = [];
+  try {
+    const url = `https://www.yelp.com/search?find_desc=${encodeURIComponent(niche)}&find_loc=${encodeURIComponent(city)}`;
+    console.log(`[Yelp] Fetching: ${url}`);
     const html = await fetchPage(url, 15000);
-    if (!html || html.length < 3000) {
-      console.log('[GMaps] Empty or blocked response');
+    if (!html || html.length < 5000) {
+      console.log('[Yelp] Empty response');
       return results;
     }
 
-    // Google Maps embeds business data in the HTML page as JSON arrays
-    // Pattern: look for arrays containing business info between certain markers
-
-    // Method 1: Extract from window.APP_INITIALIZATION_STATE or embedded JSON
-    // Business names appear near phone numbers and addresses in predictable patterns
-
-    // Extract business names — they appear in specific JSON string patterns
-    // Pattern: ["BusinessName",null,null,null,null,null,null,["address"]
-    const namePattern = /\["([^"]{3,60})",null,null,null,null,null,null,\[/g;
-    let nameMatch;
-    const rawNames: string[] = [];
-    while ((nameMatch = namePattern.exec(html)) !== null) {
-      const name = nameMatch[1];
-      if (name && !name.includes('\\') && !name.startsWith('http') && name.length > 2) {
-        rawNames.push(name);
-      }
-    }
-
-    // Method 2: Extract phone numbers — format like "+1 234-567-8901" in JSON strings
-    const allPhones = extractPhones(html);
-
-    // Method 3: Extract addresses — look for street-like patterns near business data
-    const addrPattern = /\["([^"]*\d+[^"]*(?:St|Ave|Rd|Blvd|Dr|Ln|Way|Ct|Pl|Hwy|Suite|Floor|#)[^"]*)"/gi;
-    let addrMatch;
-    const rawAddresses: string[] = [];
-    while ((addrMatch = addrPattern.exec(html)) !== null) {
-      rawAddresses.push(addrMatch[1]);
-    }
-
-    // Method 4: Extract websites from the embedded data
-    const websitePattern = /\["(https?:\/\/(?!www\.google|maps\.google|play\.google|support\.google|accounts\.google|policies\.google)[^"]+)"/g;
-    let webMatch;
-    const rawWebsites: string[] = [];
-    while ((webMatch = websitePattern.exec(html)) !== null) {
-      const url = webMatch[1];
-      if (!url.includes('google.com') && !url.includes('gstatic.com') && !url.includes('googleapis.com') && url.length < 200) {
-        rawWebsites.push(url);
-      }
-    }
-
-    // Method 5: Extract ratings
-    const ratingPattern = /(\d\.\d),\s*"(\d+)\s*reviews?"/gi;
-    let ratingMatch;
-    const rawRatings: string[] = [];
-    while ((ratingMatch = ratingPattern.exec(html)) !== null) {
-      rawRatings.push(`${ratingMatch[1]} (${ratingMatch[2]} reviews)`);
-    }
-
-    // Method 6: Better structured extraction — search for patterns like:
-    // [null,"BusinessName"] followed by address and phone data
-    const structuredPattern = /\[null,"([^"]{3,60})"\s*(?:,null)*\s*,\s*"([^"]*)"(?:[\s\S]{0,500}?)(\+?\d[\d\s\-().]{8,18}\d)/g;
-    let structMatch;
-    while ((structMatch = structuredPattern.exec(html)) !== null) {
-      const name = structMatch[1];
-      const possibleAddr = structMatch[2];
-      const phone = structMatch[3];
-      if (name && !name.startsWith('http') && name.length > 2) {
-        results.push({
-          name,
-          phone: phone || '',
-          address: possibleAddr || `${city}, ${country}`,
-          website: '',
-          rating: '',
-        });
-      }
-    }
-
-    // If structured extraction didn't work, fall back to matching arrays
-    if (results.length === 0 && rawNames.length > 0) {
-      for (let i = 0; i < rawNames.length; i++) {
-        results.push({
-          name: rawNames[i],
-          phone: allPhones[i] || '',
-          address: rawAddresses[i] || `${city}, ${country}`,
-          website: rawWebsites[i] || '',
-          rating: rawRatings[i] || '',
-        });
-      }
-    }
-
-    // Deduplicate by name
-    const seen = new Set<string>();
-    const deduped = results.filter(r => {
-      const key = r.name.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    console.log(`[GMaps] Found ${deduped.length} businesses`);
-    return deduped;
-  } catch (err) {
-    console.error('[GMaps] Error:', err);
-    return results;
-  }
-}
-
-// ==================== SOURCE 1: YELLOW PAGES ====================
-async function searchYellowPages(niche: string, city: string): Promise<{ name: string; phone: string; website: string; address: string }[]> {
-  const results: { name: string; phone: string; website: string; address: string }[] = [];
-  try {
-    const url = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(niche)}&geo_location_terms=${encodeURIComponent(city)}`;
-    console.log(`[YP] Fetching: ${url}`);
-    const html = await fetchPage(url, 12000);
-    if (!html || html.length < 1000) return results;
-
-    // Parse Yellow Pages listings
-    // Each result has: class="result", data-company-name, phone in <div class="phones">, website link
-    const listingRegex = /<div[^>]*class="[^"]*result[^"]*"[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi;
-    const listings = html.match(listingRegex) || [];
-
-    // Alternate simpler approach: extract structured data
-    // Business name from <a class="business-name">
-    const nameRegex = /<a[^>]*class="[^"]*business-name[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
-    const phoneRegex = /<div[^>]*class="[^"]*phones[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
-    const addrRegex = /<div[^>]*class="[^"]*adr[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
-    const webRegex = /<a[^>]*class="[^"]*track-visit-website[^"]*"[^>]*href="([^"]+)"/gi;
-
+    // Extract business names: "name":"BusinessName","neighborhoods"
+    const nameRegex = /"name":"([^"]{3,80})","neighborhoods"/g;
     const names: string[] = [];
-    const phones: string[] = [];
-    const addresses: string[] = [];
-    const websites: string[] = [];
-
     let m;
     while ((m = nameRegex.exec(html)) !== null) {
-      names.push(m[1].replace(/<[^>]*>/g, '').trim());
-    }
-    while ((m = phoneRegex.exec(html)) !== null) {
-      phones.push(m[1].replace(/<[^>]*>/g, '').trim());
-    }
-    while ((m = addrRegex.exec(html)) !== null) {
-      addresses.push(m[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim());
-    }
-    while ((m = webRegex.exec(html)) !== null) {
-      websites.push(m[1]);
+      const name = m[1].replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+      names.push(name);
     }
 
-    // Match up results
+    // Extract phones: "phone":"(xxx) xxx-xxxx"
+    const phoneRegex = /"phone":"(\([^"]+)"/g;
+    const phones: string[] = [];
+    while ((m = phoneRegex.exec(html)) !== null) {
+      phones.push(m[1]);
+    }
+
+    // Extract ratings: "rating":4.5,"reviewCount":123
+    const ratingRegex = /"rating":([\d.]+),"reviewCount":(\d+)/g;
+    const ratings: { rating: number; reviewCount: number }[] = [];
+    while ((m = ratingRegex.exec(html)) !== null) {
+      ratings.push({ rating: parseFloat(m[1]), reviewCount: parseInt(m[2]) });
+    }
+
+    // Extract addresses from the page — look for "addressLines" or street patterns
+    const addrRegex = /"formattedAddress":"([^"]+)"/g;
+    const addresses: string[] = [];
+    while ((m = addrRegex.exec(html)) !== null) {
+      addresses.push(m[1].replace(/&amp;/g, '&'));
+    }
+
+    // Extract business page URLs from alias
+    const aliasRegex = /"alias":"([a-z0-9-]+)"/g;
+    const aliases: string[] = [];
+    while ((m = aliasRegex.exec(html)) !== null) {
+      aliases.push(m[1]);
+    }
+
+    // Build results
+    const seen = new Set<string>();
     for (let i = 0; i < names.length; i++) {
+      if (seen.has(names[i].toLowerCase())) continue;
+      seen.add(names[i].toLowerCase());
+
       results.push({
-        name: names[i] || '',
+        name: names[i],
         phone: phones[i] || '',
+        rating: ratings[i]?.rating || 0,
+        reviewCount: ratings[i]?.reviewCount || 0,
         address: addresses[i] || '',
-        website: websites[i] || '',
+        website: '',
+        yelpUrl: aliases[i] ? `https://www.yelp.com/biz/${aliases[i]}` : '',
+        neighborhoods: '',
       });
     }
 
-    console.log(`[YP] Found ${results.length} listings`);
+    console.log(`[Yelp] Found ${results.length} businesses`);
   } catch (err) {
-    console.error('[YP] Error:', err);
+    console.error('[Yelp] Error:', err);
   }
   return results;
 }
 
-// ==================== SOURCE 2: SEARXNG (Meta Search) ====================
-async function searchSearXNG(query: string): Promise<{ title: string; link: string }[]> {
-  // Public SearXNG instances that support JSON API
-  const instances = [
-    'https://search.sapti.me',
-    'https://searx.be',
-    'https://search.bus-hit.me',
-    'https://searx.tiekoetter.com',
-    'https://search.ononoki.org',
-  ];
-
-  for (const instance of instances) {
-    try {
-      const url = `${instance}/search?q=${encodeURIComponent(query)}&format=json&categories=general`;
-      console.log(`[SearXNG] Trying: ${instance}`);
-
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': getRandomUA(),
-          'Accept': 'application/json',
-        },
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-
-      if (!res.ok) continue;
-      const data = await res.json();
-
-      if (data.results && data.results.length > 0) {
-        console.log(`[SearXNG] ${instance} returned ${data.results.length} results`);
-        return data.results.map((r: any) => ({
-          title: r.title || '',
-          link: r.url || '',
-        })).filter((r: any) => r.title && r.link && r.link.startsWith('http'));
-      }
-    } catch {
-      console.log(`[SearXNG] ${instance} failed, trying next...`);
-    }
-  }
-
-  return [];
-}
-
-// ==================== SOURCE 3: BING (Backup) ====================
-async function searchBing(query: string, count: number): Promise<{ title: string; link: string }[]> {
+// Get website URL from individual Yelp business page
+async function getYelpBusinessWebsite(yelpUrl: string): Promise<string> {
+  if (!yelpUrl) return '';
   try {
-    const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${count}`;
-    console.log(`[Bing] Fetching...`);
-    const html = await fetchPage(bingUrl, 12000);
-    if (!html || html.length < 2000) return [];
+    const html = await fetchPage(yelpUrl, 8000);
+    if (!html) return '';
 
-    const results: { title: string; link: string }[] = [];
-    const resultRegex = /<li\s+class="b_algo"[\s\S]*?<h2>\s*<a\s+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let match;
-    while ((match = resultRegex.exec(html)) !== null) {
-      const link = match[1];
-      const title = match[2].replace(/<[^>]*>/g, '').trim();
-      if (link.startsWith('http') && title) {
-        results.push({ title, link });
-      }
+    // Yelp business pages have "businessWebsite" or external link
+    const webMatch = html.match(/"externalUrl":"([^"]+)"/);
+    if (webMatch) {
+      return decodeURIComponent(webMatch[1].replace(/\\u002F/g, '/'));
     }
-    console.log(`[Bing] Found ${results.length} results`);
-    return results;
-  } catch {
-    return [];
-  }
+
+    // Alternative: look for redirect link to business website
+    const redirectMatch = html.match(/biz_redir\?url=([^"&]+)/);
+    if (redirectMatch) {
+      return decodeURIComponent(redirectMatch[1]);
+    }
+  } catch {}
+  return '';
 }
 
 // Deep scrape a business website for email
@@ -369,20 +237,26 @@ export async function POST(request: Request) {
       try {
         console.log(`[LeadFinder] Starting search: ${niche} in ${city}, ${country}`);
 
-        // ====== PHASE 0: Google Maps (best structured data, no API key) ======
-        const gmapsResults = await searchGoogleMaps(niche, city, country);
+        // ====== PRIMARY: Yelp (works reliably from servers) ======
+        const yelpResults = await searchYelp(niche, city);
 
-        for (let i = 0; i < Math.min(gmapsResults.length, maxItems); i++) {
-          const biz = gmapsResults[i];
+        for (let i = 0; i < Math.min(yelpResults.length, maxItems); i++) {
+          const biz = yelpResults[i];
           if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
           seenNames.add(biz.name.toLowerCase());
 
           let email = '';
           let phone = biz.phone;
+          let website = biz.website;
 
-          // If Maps gave us a website, scrape it for email
-          if (biz.website) {
-            const details = await scrapeWebsiteForEmail(biz.website);
+          // Try to get business website from Yelp page
+          if (!website && biz.yelpUrl) {
+            website = await getYelpBusinessWebsite(biz.yelpUrl);
+          }
+
+          // Scrape business website for email
+          if (website) {
+            const details = await scrapeWebsiteForEmail(website);
             email = details.email;
             if (!phone && details.phone) phone = details.phone;
           }
@@ -392,10 +266,11 @@ export async function POST(request: Request) {
             businessName: biz.name,
             email,
             phone,
-            website: biz.website,
+            website: website || biz.yelpUrl,
             address: biz.address || `${city}, ${country}`,
             niche, city, country,
-            status: 'new', notes: biz.rating ? `Rating: ${biz.rating}` : '',
+            status: 'new',
+            notes: biz.rating ? `⭐ ${biz.rating} (${biz.reviewCount} reviews)` : '',
             communicationHistory: [],
             createdAt: Date.now(),
           };
@@ -405,112 +280,10 @@ export async function POST(request: Request) {
           await new Promise(r => setTimeout(r, 200));
         }
 
-        // ====== PHASE 1: Yellow Pages (best for structured business data) ======
-        if (totalFound < maxItems) {
-        const ypResults = await searchYellowPages(niche, city);
-
-        for (let i = 0; i < Math.min(ypResults.length, maxItems - totalFound); i++) {
-          const biz = ypResults[i];
-          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
-          seenNames.add(biz.name.toLowerCase());
-
-          let email = '';
-          let phone = biz.phone;
-
-          // If YP gave us a website, scrape it for email
-          if (biz.website) {
-            const details = await scrapeWebsiteForEmail(biz.website);
-            email = details.email;
-            if (!phone && details.phone) phone = details.phone;
-          }
-
-          const lead = {
-            id: crypto.randomUUID(),
-            businessName: biz.name,
-            email,
-            phone,
-            website: biz.website,
-            address: biz.address || `${city}, ${country}`,
-            niche, city, country,
-            status: 'new', notes: '',
-            communicationHistory: [],
-            createdAt: Date.now(),
-          };
-
-          totalFound++;
-          await writer.write(encoder.encode(JSON.stringify(lead) + '\n'));
-          await new Promise(r => setTimeout(r, 200));
-        }
-        }
-
-        // ====== PHASE 2: SearXNG meta-search (if need more results) ======
-        if (totalFound < maxItems) {
-          const query = `${niche} in ${city} ${country} contact email`;
-          const searxResults = await searchSearXNG(query);
-
-          for (let i = 0; i < Math.min(searxResults.length, maxItems - totalFound); i++) {
-            const result = searxResults[i];
-            const cleanName = result.title.replace(/\|.*/, '').replace(/-\s*$/, '').trim();
-            if (!cleanName || seenNames.has(cleanName.toLowerCase())) continue;
-            seenNames.add(cleanName.toLowerCase());
-
-            const details = await scrapeWebsiteForEmail(result.link);
-
-            const lead = {
-              id: crypto.randomUUID(),
-              businessName: cleanName,
-              email: details.email,
-              phone: details.phone,
-              website: result.link,
-              address: `${city}, ${country}`,
-              niche, city, country,
-              status: 'new', notes: '',
-              communicationHistory: [],
-              createdAt: Date.now(),
-            };
-
-            totalFound++;
-            await writer.write(encoder.encode(JSON.stringify(lead) + '\n'));
-            await new Promise(r => setTimeout(r, 300));
-          }
-        }
-
-        // ====== PHASE 3: Bing fallback ======
-        if (totalFound < maxItems) {
-          const query = `${niche} in ${city} ${country} contact`;
-          const bingResults = await searchBing(query, maxItems - totalFound);
-
-          for (let i = 0; i < Math.min(bingResults.length, maxItems - totalFound); i++) {
-            const result = bingResults[i];
-            const cleanName = result.title.replace(/\|.*/, '').replace(/-\s*$/, '').trim();
-            if (!cleanName || seenNames.has(cleanName.toLowerCase())) continue;
-            seenNames.add(cleanName.toLowerCase());
-
-            const details = await scrapeWebsiteForEmail(result.link);
-
-            const lead = {
-              id: crypto.randomUUID(),
-              businessName: cleanName,
-              email: details.email,
-              phone: details.phone,
-              website: result.link,
-              address: `${city}, ${country}`,
-              niche, city, country,
-              status: 'new', notes: '',
-              communicationHistory: [],
-              createdAt: Date.now(),
-            };
-
-            totalFound++;
-            await writer.write(encoder.encode(JSON.stringify(lead) + '\n'));
-            await new Promise(r => setTimeout(r, 300));
-          }
-        }
-
-        // Final status
+        // Send final status
         if (totalFound === 0) {
           await writer.write(encoder.encode(
-            JSON.stringify({ _error: true, message: `No businesses found for "${niche}" in "${city}". Try a broader niche or larger city.` }) + '\n'
+            JSON.stringify({ _error: true, message: `No businesses found for "${niche}" in "${city}". Try a broader niche or larger US city.` }) + '\n'
           ));
         } else {
           await writer.write(encoder.encode(
