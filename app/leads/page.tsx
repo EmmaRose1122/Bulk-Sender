@@ -280,9 +280,24 @@ export default function LeadFinderPage() {
                     <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-white shrink-0">
                       <Building2 className="h-5 w-5" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h3 className="font-black text-slate-900 text-sm leading-tight truncate">{lead.businessName}</h3>
-                      <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mt-0.5">{lead.niche}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider">{lead.niche}</p>
+                        {(lead as any).source && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                            (lead as any).source === 'Google Maps'
+                              ? 'bg-blue-50 text-blue-600'
+                              : (lead as any).source === 'Yelp'
+                              ? 'bg-red-50 text-red-500'
+                              : 'bg-amber-50 text-amber-600'
+                          }`}>
+                            {(lead as any).source === 'Google Maps' ? '📍 GMaps'
+                              : (lead as any).source === 'Yelp' ? '⭐ Yelp'
+                              : '📋 YP'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

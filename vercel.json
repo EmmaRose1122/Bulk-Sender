@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/leads/find/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
