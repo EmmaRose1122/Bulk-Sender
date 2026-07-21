@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card } from '../../components/ui/card';
-import { Search, Building2, Mail, Phone, Globe, MapPin, Check, AlertCircle, Info, Plus, ExternalLink, Loader2, Key } from 'lucide-react';
+import { Search, Building2, Mail, Phone, Globe, MapPin, Check, Info, Plus, ExternalLink, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { Lead } from '../../types/index';
 import Link from 'next/link';
@@ -30,7 +30,7 @@ const COUNTRIES = [
 ];
 
 export default function LeadFinderPage() {
-  const { googleApiSettings, addLeads, leads } = useAppContext();
+  const { addLeads, leads } = useAppContext();
 
   const [niche, setNiche] = useState('');
   const [city, setCity] = useState('');
@@ -39,7 +39,6 @@ export default function LeadFinderPage() {
   const [isScraping, setIsScraping] = useState(false);
   const [results, setResults] = useState<Lead[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  const [requiresKey, setRequiresKey] = useState(false);
 
   const handleScrape = async () => {
     if (!niche || !city) {
@@ -49,10 +48,9 @@ export default function LeadFinderPage() {
 
     setIsScraping(true);
     setResults([]);
-    setRequiresKey(false);
 
     try {
-      const res = await fetch('/api/leads/find', {
+      const response = await fetch('/api/leads/find', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -60,30 +58,64 @@ export default function LeadFinderPage() {
           city,
           country: COUNTRIES.find(c => c.code === country)?.name || country,
           maxResults,
-          apiKey: googleApiSettings.placesApiKey,
         }),
       });
 
-      const data = await res.json();
-
-      if (data.requiresApiKey) {
-        setRequiresKey(true);
-        toast.error('Google Places API key required');
+      if (!response.ok || !response.body) {
+        toast.error('Scraping failed to start');
+        setIsScraping(false);
         return;
       }
 
-      if (!data.success) {
-        toast.error(data.message || 'Scraping failed');
-        return;
+      // Live streaming JSON lines parse logic
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let leadsFound = 0;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // Keep the last incomplete line in buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const parsed = JSON.parse(line);
+
+              // Check for error message from backend
+              if (parsed._error) {
+                toast.error(parsed.message || 'Scraping failed');
+                continue;
+              }
+
+              // Check for done signal
+              if (parsed._done) {
+                continue;
+              }
+
+              // It's a real lead
+              const newLead: Lead = parsed;
+              setResults(prev => [...prev, newLead]);
+              leadsFound++;
+            } catch (err) {
+              console.error('Error parsing live lead chunk:', err);
+            }
+          }
+        }
       }
 
-      setResults(data.leads || []);
-
-      if (data.leads?.length === 0) {
-        toast.info('No businesses found. Try a different niche or city.');
+      if (leadsFound > 0) {
+        toast.success(`Found ${leadsFound} businesses!`);
       } else {
-        toast.success(`Found ${data.leads.length} businesses!`);
+        toast.error('No leads found. Try a different niche or city.');
       }
+
     } catch (err) {
       toast.error('Network error. Please try again.');
     } finally {
@@ -92,7 +124,6 @@ export default function LeadFinderPage() {
   };
 
   const handleSaveLead = (lead: Lead) => {
-    // Check if already in database
     const alreadyExists = leads.find(l =>
       l.businessName === lead.businessName &&
       (l.email === lead.email || l.phone === lead.phone)
@@ -120,12 +151,18 @@ export default function LeadFinderPage() {
     toast.success(`${toSave.length} leads saved!`);
   };
 
+  const getWhatsAppLink = (phone: string, businessName: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const message = encodeURIComponent(`Hi ${businessName}, I found your details online and wanted to reach out.`);
+    return `https://wa.me/${cleanPhone}?text=${message}`;
+  };
+
   return (
     <div className="flex flex-col h-full min-h-0 space-y-8 pb-8 animate-in fade-in duration-500 overflow-y-auto custom-scrollbar pr-2 flex-1">
       {/* Header */}
       <header>
-        <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Lead Finder</h1>
-        <p className="text-slate-500 font-medium mt-1">Find real businesses using public data sources. Only verified data is stored.</p>
+        <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Live Lead Finder</h1>
+        <p className="text-slate-500 font-medium mt-1">Real-time live streaming scraper for emails & WhatsApp contacts.</p>
       </header>
 
       {/* Search Card */}
@@ -179,6 +216,7 @@ export default function LeadFinderPage() {
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
+              <option value={100}>100 (Deep Search)</option>
             </select>
           </div>
         </div>
@@ -190,9 +228,9 @@ export default function LeadFinderPage() {
             className="h-12 px-8 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-[1.01] transition-all"
           >
             {isScraping ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scraping...</>
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scraping Live...</>
             ) : (
-              <><Search className="mr-2 h-4 w-4" /> Start Scraping</>
+              <><Search className="mr-2 h-4 w-4" /> Start Live Scraping</>
             )}
           </Button>
 
@@ -208,61 +246,16 @@ export default function LeadFinderPage() {
         </div>
       </Card>
 
-      {/* API Key Warning */}
-      {requiresKey && (
-        <div className="flex items-start gap-4 p-5 bg-amber-50 border border-amber-200 rounded-2xl">
-          <Key className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-bold text-amber-800">Google Places API Key Required</p>
-            <p className="text-xs text-amber-600 mt-1">
-              Add your API key in{' '}
-              <Link href="/settings" className="underline font-bold">Settings → API Keys</Link>{' '}
-              to start finding real business leads.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* How it works info box */}
-      {results.length === 0 && !isScraping && (
-        <div className="p-6 bg-amber-50 border border-amber-200 rounded-2xl">
-          <div className="flex items-center gap-2 mb-3">
-            <Info className="h-5 w-5 text-amber-500" />
-            <h3 className="text-sm font-black text-amber-800 uppercase tracking-wider">How Scraping Works</h3>
-          </div>
-          <ul className="space-y-1.5 text-xs text-amber-700 font-medium">
-            <li>• <strong>With Google Maps API key:</strong> Scrapes real businesses (add key in Settings)</li>
-            <li>• <strong>Email extraction:</strong> Automatically visits each business website to find contact emails</li>
-            <li>• <strong>All data is validated</strong> (email format, phone format) before storing</li>
-            <li>• <strong>Duplicates are automatically detected</strong> by business name + phone/email</li>
-            <li>• <strong>If nothing is found, no fake data is generated</strong></li>
-          </ul>
-        </div>
-      )}
-
-      {/* Loading state */}
-      {isScraping && (
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-full gradient-primary animate-spin" style={{ clipPath: 'polygon(0 0, 50% 0, 50% 50%, 0 50%)' }} />
-            <div className="absolute inset-2 rounded-full bg-white" />
-            <Search className="absolute inset-0 m-auto h-6 w-6 text-red-600" />
-          </div>
-          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest animate-pulse">Scanning businesses...</p>
-          <p className="text-xs text-slate-400">Fetching details & extracting emails from websites</p>
-        </div>
-      )}
-
-      {/* Results */}
+      {/* Results Section */}
       {results.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-black text-slate-800">
-              Found {results.length} Businesses
+            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+              Found {results.length} Businesses {isScraping && <Loader2 className="h-4 w-4 animate-spin text-red-500" />}
             </h2>
             <Link href="/leads/list">
               <Button variant="ghost" size="sm" className="text-red-600 font-bold">
-                View All Leads →
+                View Saved Leads →
               </Button>
             </Link>
           </div>
@@ -298,7 +291,6 @@ export default function LeadFinderPage() {
                       <div className="flex items-center gap-2">
                         <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                         <span className="text-xs font-medium text-slate-700 truncate">{lead.email}</span>
-                        <span className="ml-auto text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">✓</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -307,10 +299,27 @@ export default function LeadFinderPage() {
                       </div>
                     )}
 
-                    {lead.phone && (
+                    {lead.phone ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span className="text-xs font-medium text-slate-700">{lead.phone}</span>
+                        </div>
+
+                        {/* WhatsApp direct chat link */}
+                        <a
+                          href={getWhatsAppLink(lead.phone, lead.businessName)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-[11px] font-bold bg-emerald-500 text-white px-2 py-1 rounded-lg hover:bg-emerald-600 transition-colors shadow-sm"
+                        >
+                          <MessageSquare className="h-3 w-3" /> WhatsApp
+                        </a>
+                      </div>
+                    ) : (
                       <div className="flex items-center gap-2">
-                        <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <span className="text-xs font-medium text-slate-700">{lead.phone}</span>
+                        <Phone className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                        <span className="text-xs text-slate-400 italic">No phone found</span>
                       </div>
                     )}
 
