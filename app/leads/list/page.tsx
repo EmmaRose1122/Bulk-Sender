@@ -156,16 +156,16 @@ const DOT_SKILLS_TEMPLATES = [
 I noticed ${toBold(lead.businessName)} while reviewing ${lead.niche} businesses in ${lead.city || 'your area'}. You have a great business, but your online presence could be generating 3x more customer leads.
 
 At ${toBold('Dot Skills')}, we specialize in high-converting agency services:
-• Web Development: Modern, fast-loading, mobile-friendly websites that convert visitors into paying customers.
-• SEO: Rank at the top of Google search results.
-• Local SEO: Dominate Google Maps 3-Pack rankings for local clients.
-• Social Media Marketing: Engage target customers and build brand authority.
+• ${toBold('Web Development')}: Modern, fast-loading, mobile-friendly websites that convert visitors into paying customers.
+• ${toBold('SEO')}: Rank at the top of Google search results.
+• ${toBold('Local SEO')}: Dominate Google Maps 3-Pack rankings for local clients.
+• ${toBold('Social Media Marketing')}: Engage target customers and build brand authority.
 
 Would you be open to a quick 10-minute call this week to see how ${toBold('Dot Skills')} can help ${toBold(lead.businessName)} grow?
 
 Best regards,
 ${toBold('Dot Skills Team')}
-Web Development | SEO | Local SEO | Social Media Marketing`
+${toBold('Web Development')} | ${toBold('SEO')} | ${toBold('Local SEO')} | ${toBold('Social Media Marketing')}`
   },
   {
     id: 'local_seo',
@@ -175,18 +175,18 @@ Web Development | SEO | Local SEO | Social Media Marketing`
 
 I came across ${toBold(lead.businessName)} and noticed a huge opportunity to significantly increase your local customer calls in ${lead.city || 'your city'}.
 
-At ${toBold('Dot Skills')}, our Local SEO & Google Maps optimization service helps businesses like yours:
+At ${toBold('Dot Skills')}, our ${toBold('Local SEO')} & Google Maps optimization service helps businesses like yours:
 • Rank in the Google Maps Top 3-Pack for local searches
 • Dominate local keyword search results
 • Convert local search traffic into direct calls & walk-in clients
 
-We also provide complete Web Development, SEO, and Social Media Marketing to scale ${toBold(lead.businessName)}.
+We also provide complete ${toBold('Web Development')}, ${toBold('SEO')}, and ${toBold('Social Media Marketing')} to scale ${toBold(lead.businessName)}.
 
 We'd love to send a free 5-minute video audit customized for ${toBold(lead.businessName)}. Would you be interested?
 
 Best regards,
 ${toBold('Dot Skills Team')}
-Web Development | SEO | Local SEO | Social Media Marketing`
+${toBold('Web Development')} | ${toBold('SEO')} | ${toBold('Local SEO')} | ${toBold('Social Media Marketing')}`
   },
   {
     id: 'smm',
@@ -196,18 +196,18 @@ Web Development | SEO | Local SEO | Social Media Marketing`
 
 I was checking out ${toBold(lead.businessName)} and saw great potential to expand your brand reach on social media.
 
-At ${toBold('Dot Skills')}, our Social Media Marketing team creates high-impact content that attracts and retains customers:
+At ${toBold('Dot Skills')}, our ${toBold('Social Media Marketing')} team creates high-impact content that attracts and retains customers:
 • Custom visual content creation & branding
 • Targeted ad campaigns for local lead generation
 • Consistent engagement & community management
 
-Together with our Web Development and SEO services, we help ${toBold(lead.businessName)} dominate your market.
+Together with our ${toBold('Web Development')} and ${toBold('SEO')} services, we help ${toBold(lead.businessName)} dominate your market.
 
 Could we schedule a quick 10-minute chat to discuss how ${toBold('Dot Skills')} can elevate ${toBold(lead.businessName)}?
 
 Best regards,
 ${toBold('Dot Skills Team')}
-Web Development | SEO | Local SEO | Social Media Marketing`
+${toBold('Web Development')} | ${toBold('SEO')} | ${toBold('Local SEO')} | ${toBold('Social Media Marketing')}`
   },
   {
     id: 'full_package',
@@ -218,9 +218,9 @@ Web Development | SEO | Local SEO | Social Media Marketing`
 I hope this email finds you well! I reached out because ${toBold(lead.businessName)} has strong growth potential in ${lead.city || 'your market'}.
 
 At ${toBold('Dot Skills')}, we provide full-suite digital solutions tailored for ${lead.niche} businesses:
-1. Web Development: Modern, high-speed, conversion-focused websites
-2. SEO & Local SEO: Rank #1 on Google & Google Maps 3-Pack
-3. Social Media Marketing: Expand reach & run targeted lead campaigns
+1. ${toBold('Web Development')}: Modern, high-speed, conversion-focused websites
+2. ${toBold('SEO & Local SEO')}: Rank #1 on Google & Google Maps 3-Pack
+3. ${toBold('Social Media Marketing')}: Expand reach & run targeted lead campaigns
 
 We can handle your entire digital presence so you can focus on running ${toBold(lead.businessName)}.
 
@@ -228,7 +228,7 @@ Would you be open to a quick discovery call this week?
 
 Best regards,
 ${toBold('Dot Skills Team')}
-Web Development | SEO | Local SEO | Social Media Marketing`
+${toBold('Web Development')} | ${toBold('SEO')} | ${toBold('Local SEO')} | ${toBold('Social Media Marketing')}`
   }
 ];
 
