@@ -227,16 +227,17 @@ export default function SettingsPage() {
                                 }
                                 setIsTesting('gemini');
                                 try {
-                                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`, {
+                                    const res = await fetch('/api/test-gemini', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ contents: [{ parts: [{ text: "Hi" }] }] })
+                                        body: JSON.stringify({ apiKey: geminiKey }),
                                     });
-                                    if (res.ok) {
+                                    const data = await res.json();
+                                    if (data.success) {
                                         toast.success('Gemini API Connected Successfully!');
-                                        updateGoogleApiSettings({ ...googleApiSettings, geminiApiKey: geminiKey });
+                                        updateGoogleApiSettings({ ...googleApiSettings, geminiApiKey: geminiKey.trim() });
                                     } else {
-                                        toast.error('Invalid Gemini API Key');
+                                        toast.error(data.message || 'Invalid Gemini API Key');
                                     }
                                 } catch (error) {
                                     toast.error('Failed to verify API connection');
