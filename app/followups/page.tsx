@@ -243,6 +243,17 @@ export default function FollowUpsPage() {
                         <div className="min-w-0">
                           <span className="font-black text-slate-900 text-sm">{fu.leadName}</span>
                           <span className="text-slate-400 text-xs font-medium"> · {fu.leadEmail}</span>
+                          {(() => {
+                            const l = leads.find(item => item.id === fu.leadId);
+                            if (l?.openCount && l.openCount > 0) {
+                              return (
+                                <span className="ml-2 px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-600 text-[10px] font-bold border border-purple-100 inline-flex items-center gap-1">
+                                  <Eye className="h-3 w-3" /> Opened ({l.openCount}x)
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
 

@@ -107,21 +107,61 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     useEffect(() => {
         const syncServerLeads = async () => {
             try {
-                const res = await fetch('/api/leads/push');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.success && data.leads && Array.isArray(data.leads) && data.leads.length > 0) {
+                const [resLeads, resTrack] = await Promise.all([
+                    fetch('/api/leads/push').catch(() => null),
+                    fetch('/api/track?action=stats').catch(() => null)
+                ]);
+
+                let trackData: Record<string, any> = {};
+                if (resTrack && resTrack.ok) {
+                    const tJson = await resTrack.json();
+                    if (tJson.success && tJson.tracking) {
+                        trackData = tJson.tracking;
+                    }
+                }
+
+                if (resLeads && resLeads.ok) {
+                    const data = await resLeads.json();
+                    if (data.success && Array.isArray(data.leads) && data.leads.length > 0) {
                         setLeads(prev => {
-                            const merged = [...prev];
-                            let hasNew = false;
-                            for (const lead of data.leads) {
-                                const exists = merged.find(l => l.businessName === lead.businessName && (l.email === lead.email || l.phone === lead.phone));
-                                if (!exists) {
-                                    merged.unshift(lead);
-                                    hasNew = true;
+                            let updated = false;
+                            const existingMap = new Map(prev.map(l => [l.id, l]));
+                            
+                            for (const serverLead of data.leads) {
+                                const current = existingMap.get(serverLead.id);
+                                const trackingInfo = trackData[serverLead.id];
+                                
+                                let newStatus = serverLead.status;
+                                let openCount = current?.openCount || 0;
+                                let lastOpenedAt = current?.lastOpenedAt;
+
+                                if (trackingInfo && trackingInfo.opened) {
+                                    if (newStatus === 'contacted' || newStatus === 'new') {
+                                        newStatus = 'opened';
+                                    }
+                                    openCount = trackingInfo.openCount || 1;
+                                    lastOpenedAt = trackingInfo.lastOpenedAt;
+                                }
+
+                                if (!current) {
+                                    existingMap.set(serverLead.id, {
+                                        ...serverLead,
+                                        status: newStatus,
+                                        openCount,
+                                        lastOpenedAt
+                                    });
+                                    updated = true;
+                                } else if (current.status !== newStatus || current.openCount !== openCount) {
+                                    existingMap.set(serverLead.id, {
+                                        ...current,
+                                        status: newStatus,
+                                        openCount,
+                                        lastOpenedAt
+                                    });
+                                    updated = true;
                                 }
                             }
-                            return hasNew ? merged : prev;
+                            return updated ? Array.from(existingMap.values()) : prev;
                         });
                     }
                 }

@@ -94,7 +94,7 @@ export interface CommunicationEntry {
   sentAt: number;
 }
 
-export type LeadStatus = 'new' | 'contacted' | 'replied' | 'interested' | 'closed';
+export type LeadStatus = 'new' | 'contacted' | 'opened' | 'replied' | 'interested' | 'closed';
 
 export interface Lead {
   id: string;
@@ -107,6 +107,8 @@ export interface Lead {
   city: string;
   country: string;
   status: LeadStatus;
+  openCount?: number;
+  lastOpenedAt?: number;
   notes?: string;
   communicationHistory: CommunicationEntry[];
   createdAt: number;

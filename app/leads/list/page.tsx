@@ -21,8 +21,9 @@ import { Checkbox } from '../../../components/ui/checkbox';
 const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: string; ring: string }> = {
   new:        { label: 'New',        color: 'text-blue-600',   bg: 'bg-blue-50',   ring: 'ring-blue-200'   },
   contacted:  { label: 'Contacted',  color: 'text-amber-600',  bg: 'bg-amber-50',  ring: 'ring-amber-200'  },
+  opened:     { label: '👀 Opened',  color: 'text-purple-600', bg: 'bg-purple-50', ring: 'ring-purple-200' },
   replied:    { label: 'Replied',    color: 'text-emerald-600',bg: 'bg-emerald-50',ring: 'ring-emerald-200' },
-  interested: { label: 'Interested', color: 'text-rose-600', bg: 'bg-rose-50', ring: 'ring-rose-200'  },
+  interested: { label: 'Interested', color: 'text-rose-600',   bg: 'bg-rose-50',   ring: 'ring-rose-200'   },
   closed:     { label: 'Closed',     color: 'text-slate-500',  bg: 'bg-slate-100', ring: 'ring-slate-200'   },
 };
 
@@ -619,6 +620,11 @@ ${toBold('Web Development')} | ${toBold('SEO')} | ${toBold('Local SEO')} | ${toB
                           <span className={cn('px-3 py-1 rounded-full text-[10px] font-bold border border-transparent', cfg.bg, cfg.color)}>
                             {cfg.label}
                           </span>
+                          {lead.openCount && lead.openCount > 0 ? (
+                            <p className="text-[10px] font-bold text-purple-600 mt-1 flex items-center gap-1">
+                              <Eye className="h-3 w-3" /> {lead.openCount} open{lead.openCount > 1 ? 's' : ''}
+                            </p>
+                          ) : null}
                         </td>
                         <td className="p-4">
                           <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -5,64 +5,62 @@ import path from 'path';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const TRACKING_FILE = path.join(DATA_DIR, 'tracking.json');
 
-// Helper to ensure data directory and file exist (called at runtime, not build time)
+// Helper to ensure data directory and file exist
 function ensureDataFile() {
     if (!fs.existsSync(DATA_DIR)) {
-        console.log('Creating data directory at:', DATA_DIR);
         fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     if (!fs.existsSync(TRACKING_FILE)) {
-        console.log('Creating tracking file at:', TRACKING_FILE);
         fs.writeFileSync(TRACKING_FILE, JSON.stringify({}));
-    }
-}
-
-// Helper to safely get geo location
-async function getGeoLocation(ip: string): Promise<{ city?: string; country?: string; region?: string } | null> {
-    try {
-        // Dynamic import to avoid build-time issues with geoip-lite data files
-        const geoip = await import('geoip-lite');
-        const geo = geoip.default.lookup(ip);
-        return geo ? { city: geo.city, country: geo.country, region: geo.region } : null;
-    } catch (error) {
-        console.error('GeoIP lookup failed:', error);
-        return null;
     }
 }
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const id = searchParams.get('id') || searchParams.get('leadId');
+
+    // If client is fetching tracking stats (JSON endpoint)
+    if (searchParams.get('action') === 'stats') {
+        try {
+            ensureDataFile();
+            const data = JSON.parse(fs.readFileSync(TRACKING_FILE, 'utf8'));
+            return NextResponse.json({ success: true, tracking: data });
+        } catch (error) {
+            return NextResponse.json({ success: false, tracking: {} });
+        }
+    }
 
     if (id) {
         try {
             ensureDataFile();
-            const data = JSON.parse(fs.readFileSync(TRACKING_FILE, 'utf8'));
-            const existing = data[id] || {};
+            let data: Record<string, any> = {};
+            try {
+                data = JSON.parse(fs.readFileSync(TRACKING_FILE, 'utf8'));
+            } catch (e) {
+                data = {};
+            }
 
+            const existing = data[id] || { openCount: 0 };
             const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
             const cleanIp = ip.split(',')[0].trim();
-            const geo = await getGeoLocation(cleanIp);
-            const location = geo ? `${geo.city || ''}, ${geo.country || ''}`.replace(/^, /, '') : 'Unknown Location';
 
             data[id] = {
                 ...existing,
                 opened: true,
+                openCount: (existing.openCount || 0) + 1,
                 openedAt: existing.openedAt || Date.now(),
                 lastOpenedAt: Date.now(),
                 ip: cleanIp,
-                userAgent: request.headers.get('user-agent') || 'unknown',
-                location: geo,
-                locationString: location
+                userAgent: request.headers.get('user-agent') || 'unknown'
             };
             fs.writeFileSync(TRACKING_FILE, JSON.stringify(data, null, 2));
-            console.log(`Email opened: ${id} from ${location} (${cleanIp})`);
+            console.log(`[Email Tracking] Open recorded for lead ID: ${id} (Count: ${data[id].openCount})`);
         } catch (error) {
-            console.error('Tracking Error:', error);
+            console.error('Tracking Record Error:', error);
         }
     }
 
-    // Return a 1x1 transparent GIF
+    // Return a 1x1 transparent GIF image
     const buffer = Buffer.from(
         'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
         'base64'
