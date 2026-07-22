@@ -101,6 +101,36 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         }
     }, [smtpConfigs, defaultSmtpId, setDefaultSmtpId]);
 
+    // Auto-sync leads pushed from Python / external APIs into AppContext
+    useEffect(() => {
+        const syncServerLeads = async () => {
+            try {
+                const res = await fetch('/api/leads/push');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.leads && Array.isArray(data.leads) && data.leads.length > 0) {
+                        setLeads(prev => {
+                            const merged = [...prev];
+                            let hasNew = false;
+                            for (const lead of data.leads) {
+                                const exists = merged.find(l => l.businessName === lead.businessName && (l.email === lead.email || l.phone === lead.phone));
+                                if (!exists) {
+                                    merged.unshift(lead);
+                                    hasNew = true;
+                                }
+                            }
+                            return hasNew ? merged : prev;
+                        });
+                    }
+                }
+            } catch { }
+        };
+
+        syncServerLeads();
+        const interval = setInterval(syncServerLeads, 4000);
+        return () => clearInterval(interval);
+    }, []);
+
     const addSmtpConfig = (config: SmtpConfig) => {
         setSmtpConfigs([...smtpConfigs, config]);
         if (smtpConfigs.length === 0) {
