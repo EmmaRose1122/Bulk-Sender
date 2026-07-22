@@ -122,6 +122,7 @@ async function quickScrapeWebsite(url: string): Promise<{ email: string; phone: 
 interface BusinessItem {
   name: string;
   phone: string;
+  email?: string;
   address: string;
   website: string;
   rating?: string;
@@ -129,60 +130,93 @@ interface BusinessItem {
 }
 
 // ════════════════════════════════════════════════════
-// SERPER.DEV & GOOGLE PLACES API SCRAPER (Official Key)
+// SERPER.DEV & GOOGLE PLACES API SCRAPER
 // ════════════════════════════════════════════════════
 async function scrapeSerperGooglePlaces(niche: string, city: string, country: string, apiKey: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
   try {
-    // Check if it's Serper.dev or official Google Cloud key
-    const query = `${niche} in ${city} ${country}`;
+    const queryPlaces = `${niche} in ${city} ${country}`;
+    const querySearch = `${niche} ${city} ${country} phone email website contact`;
 
-    // 1. Try Serper.dev API
-    const serperRes = await fetch('https://google.serper.dev/places', {
+    // 1. Serper Places endpoint
+    const placesPromise = fetch('https://google.serper.dev/places', {
       method: 'POST',
       headers: {
         'X-API-KEY': apiKey,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ q: query, num: 30 }),
+      body: JSON.stringify({ q: queryPlaces, num: 30 }),
     });
 
-    if (serperRes.ok) {
-      const data = await serperRes.json();
+    // 2. Serper Organic Search endpoint for direct email/phone snippets
+    const searchPromise = fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q: querySearch, num: 30 }),
+    });
+
+    const [placesRes, searchRes] = await Promise.allSettled([placesPromise, searchPromise]);
+
+    if (placesRes.status === 'fulfilled' && placesRes.value.ok) {
+      const data = await placesRes.value.json();
       if (Array.isArray(data.places)) {
         for (const p of data.places) {
+          const name = p.title || p.name;
+          if (!name) continue;
+
           results.push({
-            name: p.title || p.name,
+            name,
             phone: p.phoneNumber || p.phone || '',
             address: p.address || `${city}, ${country}`,
             website: p.website || '',
-            rating: p.rating ? `⭐ ${p.rating}` : '⭐ Google Maps',
+            rating: p.rating ? `⭐ ${p.rating} (${p.ratingCount || 0})` : '⭐ Google Maps',
             source: 'Google Maps API',
           });
         }
-        console.log(`[SerperAPI] Found ${results.length} Google Maps places`);
-        return results;
       }
     }
 
-    // 2. Fallback to Google Cloud Places API
-    const gUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`;
-    const gRes = await fetch(gUrl);
-    if (gRes.ok) {
-      const gData = await gRes.json();
-      if (Array.isArray(gData.results)) {
-        for (const item of gData.results) {
-          results.push({
-            name: item.name,
-            phone: item.formatted_phone_number || '',
-            address: item.formatted_address || `${city}, ${country}`,
-            website: item.website || '',
-            rating: item.rating ? `⭐ ${item.rating}` : '⭐ Google Maps',
-            source: 'Google Maps API',
-          });
+    if (searchRes.status === 'fulfilled' && searchRes.value.ok) {
+      const searchData = await searchRes.value.json();
+      if (Array.isArray(searchData.organic)) {
+        for (const item of searchData.organic) {
+          const name = item.title ? item.title.split('-')[0].split('|')[0].trim() : '';
+          const snippet = item.snippet || '';
+          const siteUrl = item.link || '';
+
+          if (
+            name && name.length > 2 && name.length < 80 &&
+            !siteUrl.includes('google.com') && !siteUrl.includes('zocdoc.com') && !siteUrl.includes('yelp.com')
+          ) {
+            const extractedEmails = extractEmails(snippet);
+            const extractedPhones = extractPhones(snippet);
+
+            const existing = results.find(r => r.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+              if (!existing.email && extractedEmails.length) existing.email = extractedEmails[0];
+              if (!existing.phone && extractedPhones.length) existing.phone = extractedPhones[0];
+              if (!existing.website) existing.website = siteUrl;
+            } else {
+              results.push({
+                name,
+                phone: extractedPhones[0] || '',
+                email: extractedEmails[0] || '',
+                address: `${city}, ${country}`,
+                website: siteUrl,
+                source: 'Google Search API',
+              });
+            }
+          }
         }
       }
     }
+
+    console.log(`[SerperAPI] Found ${results.length} total places & search leads`);
+    return results;
+
   } catch (err) {
     console.error('[GoogleAPI] Error:', err);
   }
@@ -191,7 +225,7 @@ async function scrapeSerperGooglePlaces(niche: string, city: string, country: st
 }
 
 // ════════════════════════════════════════════════════
-// OPENSTREETMAP MAPS SCRAPER (Free, Unlimited)
+// OPENSTREETMAP MAPS SCRAPER
 // ════════════════════════════════════════════════════
 async function scrapeOSMMaps(niche: string, city: string, country: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
@@ -517,7 +551,7 @@ export async function POST(request: Request) {
 
         const scraperPromises: Promise<BusinessItem[]>[] = [];
 
-        // If user provided a Serper / Google API key, use official Google Places API first!
+        // Serper.dev / Google API integration
         if (apiKey && apiKey.trim().length > 5) {
           scraperPromises.push(scrapeSerperGooglePlaces(niche, city, country, apiKey.trim()));
         }
@@ -548,11 +582,12 @@ export async function POST(request: Request) {
           if (!item.name || seenNames.has(item.name.toLowerCase())) continue;
           seenNames.add(item.name.toLowerCase());
 
-          let email = '';
+          let email = item.email || '';
           let phone = item.phone;
           const website = item.website;
 
-          if (website && website.startsWith('http')) {
+          // Quick non-blocking website contact scrape if email missing
+          if (!email && website && website.startsWith('http')) {
             const contacts = await quickScrapeWebsite(website);
             if (contacts.email) email = contacts.email;
             if (!phone && contacts.phone) phone = contacts.phone;
