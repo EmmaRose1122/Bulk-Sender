@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
+import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card } from '../../components/ui/card';
-import { Search, Building2, Mail, Phone, Globe, MapPin, Check, Info, Plus, ExternalLink, Loader2, MessageSquare } from 'lucide-react';
+import { Search, Building2, Mail, Phone, Globe, MapPin, Check, Plus, ExternalLink, Loader2, MessageSquare, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Lead } from '../../types/index';
 import Link from 'next/link';
@@ -32,13 +33,30 @@ const COUNTRIES = [
 export default function LeadFinderPage() {
   const { addLeads, leads } = useAppContext();
 
-  const [niche, setNiche] = useState('');
-  const [city, setCity] = useState('');
-  const [country, setCountry] = useState('US');
-  const [maxResults, setMaxResults] = useState(20);
+  // Persistent search form & persistent scraped results (won't disappear on tab change!)
+  const [niche, setNiche] = useLocalStorage<string>('lf_niche', '');
+  const [city, setCity] = useLocalStorage<string>('lf_city', '');
+  const [country, setCountry] = useLocalStorage<string>('lf_country', 'US');
+  const [maxResults, setMaxResults] = useLocalStorage<number>('lf_max_results', 50);
+
   const [isScraping, setIsScraping] = useState(false);
-  const [results, setResults] = useState<Lead[]>([]);
+  const [results, setResults] = useLocalStorage<Lead[]>('lead_finder_live_results', []);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+
+  // Sync saved status on load or leads update
+  useEffect(() => {
+    if (leads && leads.length > 0) {
+      const savedSet = new Set<string>();
+      results.forEach(res => {
+        const found = leads.find(l => 
+          l.businessName.toLowerCase() === res.businessName.toLowerCase() &&
+          (l.email === res.email || l.phone === res.phone)
+        );
+        if (found) savedSet.add(res.id);
+      });
+      setSavedIds(savedSet);
+    }
+  }, [leads, results]);
 
   const handleScrape = async () => {
     if (!niche || !city) {
@@ -67,7 +85,6 @@ export default function LeadFinderPage() {
         return;
       }
 
-      // Live streaming JSON lines parse logic
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -79,8 +96,6 @@ export default function LeadFinderPage() {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-
-        // Keep the last incomplete line in buffer
         buffer = lines.pop() || '';
 
         for (const line of lines) {
@@ -88,18 +103,15 @@ export default function LeadFinderPage() {
             try {
               const parsed = JSON.parse(line);
 
-              // Check for error message from backend
               if (parsed._error) {
                 toast.error(parsed.message || 'Scraping failed');
                 continue;
               }
 
-              // Check for done signal
               if (parsed._done) {
                 continue;
               }
 
-              // It's a real lead
               const newLead: Lead = parsed;
               setResults(prev => [...prev, newLead]);
               leadsFound++;
@@ -151,6 +163,12 @@ export default function LeadFinderPage() {
     toast.success(`${toSave.length} leads saved!`);
   };
 
+  const handleClearResults = () => {
+    setResults([]);
+    setSavedIds(new Set());
+    toast.info('Search results cleared');
+  };
+
   const getWhatsAppLink = (phone: string, businessName: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
     const message = encodeURIComponent(`Hi ${businessName}, I found your details online and wanted to reach out.`);
@@ -160,9 +178,11 @@ export default function LeadFinderPage() {
   return (
     <div className="flex flex-col h-full min-h-0 space-y-8 pb-8 animate-in fade-in duration-500 overflow-y-auto custom-scrollbar pr-2 flex-1">
       {/* Header */}
-      <header>
-        <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Live Lead Finder</h1>
-        <p className="text-slate-500 font-medium mt-1">Real-time live streaming scraper for emails & WhatsApp contacts.</p>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Live Lead Finder</h1>
+          <p className="text-slate-500 font-medium mt-1">Multi-Source Real-time Scraper (Google Maps, Bing, Yelp, OpenStreetMap & YellowPages).</p>
+        </div>
       </header>
 
       {/* Search Card */}
@@ -213,34 +233,45 @@ export default function LeadFinderPage() {
               onChange={(e) => setMaxResults(Number(e.target.value))}
               className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100 (Deep Search)</option>
+              <option value={20}>20 Leads</option>
+              <option value={50}>50 Leads</option>
+              <option value={100}>100 Leads (Deep Search)</option>
             </select>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 mt-6">
-          <Button
-            onClick={handleScrape}
-            disabled={isScraping}
-            className="h-12 px-8 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-[1.01] transition-all"
-          >
-            {isScraping ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scraping Live...</>
-            ) : (
-              <><Search className="mr-2 h-4 w-4" /> Start Live Scraping</>
+        <div className="flex items-center justify-between mt-6">
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={handleScrape}
+              disabled={isScraping}
+              className="h-12 px-8 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-[1.01] transition-all"
+            >
+              {isScraping ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scraping Live...</>
+              ) : (
+                <><Search className="mr-2 h-4 w-4" /> Start Multi-Source Scraping</>
+              )}
+            </Button>
+
+            {results.length > 0 && (
+              <Button
+                onClick={handleSaveAll}
+                variant="outline"
+                className="h-12 px-6 rounded-2xl border-red-200 text-red-700 font-bold hover:bg-red-50"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Save All ({results.length})
+              </Button>
             )}
-          </Button>
+          </div>
 
           {results.length > 0 && (
             <Button
-              onClick={handleSaveAll}
-              variant="outline"
-              className="h-12 px-6 rounded-2xl border-red-200 text-red-700 font-bold hover:bg-red-50"
+              onClick={handleClearResults}
+              variant="ghost"
+              className="h-10 text-slate-500 hover:text-red-600 font-semibold text-xs"
             >
-              <Plus className="mr-2 h-4 w-4" /> Save All ({results.length})
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Clear Screen
             </Button>
           )}
         </div>
@@ -255,7 +286,7 @@ export default function LeadFinderPage() {
             </h2>
             <Link href="/leads/list">
               <Button variant="ghost" size="sm" className="text-red-600 font-bold">
-                View Saved Leads →
+                View Saved Leads ({leads.length}) →
               </Button>
             </Link>
           </div>
@@ -290,10 +321,13 @@ export default function LeadFinderPage() {
                               ? 'bg-blue-50 text-blue-600'
                               : (lead as any).source === 'Yelp'
                               ? 'bg-red-50 text-red-500'
+                              : (lead as any).source === 'Bing Search'
+                              ? 'bg-purple-50 text-purple-600'
                               : 'bg-amber-50 text-amber-600'
                           }`}>
                             {(lead as any).source === 'Google Maps' ? '📍 GMaps'
                               : (lead as any).source === 'Yelp' ? '⭐ Yelp'
+                              : (lead as any).source === 'Bing Search' ? '🔍 Bing'
                               : '📋 YP'}
                           </span>
                         )}

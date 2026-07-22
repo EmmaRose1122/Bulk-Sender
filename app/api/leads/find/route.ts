@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // ─────────────────────────────────────────────
-// Vercel Production Safe — Pure fetch() only
+// Vercel Production Safe — High Yield Multi-Source Scraper
 // No Puppeteer / No Chrome / No API key needed
 // ─────────────────────────────────────────────
 
@@ -14,7 +14,6 @@ interface FindRequest {
   maxResults: number;
 }
 
-// ── User Agents ──────────────────────────────
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -26,7 +25,6 @@ function getRandomUA() {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-// ── Helpers ──────────────────────────────────
 function extractEmails(text: string): string[] {
   const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
   const matches = text.match(emailRegex) || [];
@@ -39,6 +37,7 @@ function extractEmails(text: string): string[] {
     'yellowpages.com', 'yelp.com', 'yelpcdn.com', 'maps.google.com',
     'googleapis.com', 'gstatic.com', 'googleusercontent.com', 'fbcdn.net',
     'amazonaws.com', 'akamai.com', 'jquery.com', 'bootstrapcdn.com',
+    'bing.com', 'duckduckgo.com', 'microsoft.com',
   ];
   const valid = matches.filter(e =>
     !blacklist.some(bl => e.toLowerCase().includes(bl)) &&
@@ -73,7 +72,6 @@ function decodeHtml(str: string): string {
     .trim();
 }
 
-// ── Fetch helpers ─────────────────────────────
 async function fetchHtml(url: string, timeoutMs = 12000, extraHeaders: Record<string, string> = {}): Promise<string> {
   try {
     const controller = new AbortController();
@@ -98,7 +96,6 @@ async function fetchHtml(url: string, timeoutMs = 12000, extraHeaders: Record<st
   }
 }
 
-// ── Website Email Scraper ─────────────────────
 async function scrapeWebsiteForContacts(url: string): Promise<{ email: string; phone: string }> {
   let email = '';
   let phone = '';
@@ -142,87 +139,74 @@ async function scrapeWebsiteForContacts(url: string): Promise<{ email: string; p
 }
 
 // ════════════════════════════════════════════════════
-// GOOGLE MAPS / LOCAL PLACES SCRAPER — Vercel Safe
+// 1. GOOGLE LOCAL MAPS SCRAPER
 // ════════════════════════════════════════════════════
-interface GoogleBusiness {
+interface BusinessItem {
   name: string;
   phone: string;
   address: string;
   website: string;
-  rating: string;
-  category: string;
-  mapsUrl: string;
+  rating?: string;
+  source: string;
 }
 
-async function scrapeGoogleLocalPlaces(niche: string, city: string, country: string): Promise<GoogleBusiness[]> {
-  const results: GoogleBusiness[] = [];
+async function scrapeGoogleLocalPlaces(niche: string, city: string, country: string): Promise<BusinessItem[]> {
+  const results: BusinessItem[] = [];
   const query = `${niche} in ${city} ${country}`;
   
-  // Google Local Search (tbm=lcl delivers Google Maps 3-Pack HTML!)
-  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=lcl&hl=en`;
+  const urls = [
+    `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=lcl&hl=en`,
+    `https://www.google.com/search?q=${encodeURIComponent(niche + ' ' + city)}&tbm=lcl&hl=en`,
+  ];
 
-  console.log(`[GoogleLocal] Fetching: ${url}`);
-  const html = await fetchHtml(url, 15000, {
-    'Cookie': 'CONSENT=YES+;',
-  });
+  for (const url of urls) {
+    const html = await fetchHtml(url, 15000, { 'Cookie': 'CONSENT=YES+;' });
+    if (!html || html.length < 3000) continue;
 
-  if (!html || html.length < 3000) {
-    console.log('[GoogleLocal] No response or blocked');
-    return results;
-  }
+    try {
+      const namePatterns = [
+        /<div[^>]*class="[^"]*(?:OSrLfi|dbg0pd|rllt__details)[^"]*"[^>]*>(?:<span[^>]*>)?([^<]{3,80})(?:<\/span>)?<\/div>/g,
+        /data-attrid="kc:\/location\/location:name"[^>]*>([^<]{3,80})</g,
+        /aria-label="([^"]{3,80})"\s+role="heading"/g,
+        /<span class="OSrLfi"[^>]*>([^<]{3,80})<\/span>/g,
+      ];
 
-  console.log(`[GoogleLocal] Got ${html.length} bytes`);
-
-  try {
-    // Extract local business cards from Google Local Places HTML
-    // Patterns for Google Local Business names
-    const namePatterns = [
-      /<div[^>]*class="[^"]*(?:OSrLfi|dbg0pd|rllt__details)[^"]*"[^>]*>(?:<span[^>]*>)?([^<]{3,80})(?:<\/span>)?<\/div>/g,
-      /data-attrid="kc:\/location\/location:name"[^>]*>([^<]{3,80})</g,
-      /aria-label="([^"]{3,80})"\s+role="heading"/g,
-      /<span class="OSrLfi"[^>]*>([^<]{3,80})<\/span>/g,
-    ];
-
-    const names: string[] = [];
-    for (const pat of namePatterns) {
-      let m;
-      while ((m = pat.exec(html)) !== null) {
-        const name = decodeHtml(m[1]).trim();
-        if (
-          name.length > 2 && name.length < 80 &&
-          !name.toLowerCase().includes('google') &&
-          !name.toLowerCase().includes('maps') &&
-          !name.toLowerCase().includes('reviews') &&
-          !names.includes(name)
-        ) {
-          names.push(name);
+      const names: string[] = [];
+      for (const pat of namePatterns) {
+        let m;
+        while ((m = pat.exec(html)) !== null) {
+          const name = decodeHtml(m[1]).trim();
+          if (
+            name.length > 2 && name.length < 80 &&
+            !name.toLowerCase().includes('google') &&
+            !name.toLowerCase().includes('maps') &&
+            !name.toLowerCase().includes('reviews') &&
+            !names.includes(name)
+          ) {
+            names.push(name);
+          }
         }
       }
-      if (names.length > 5) break;
+
+      const phones = extractPhones(html.replace(/<[^>]*>/g, ' '));
+      const websiteMatches = html.match(/href="(https?:\/\/(?!(?:google|gstatic|youtube|facebook\.com\/sharer)[^"]*)[^"]{5,100})"/g) || [];
+      const websites = websiteMatches.map(w => w.replace(/^href="/, '').replace(/"$/, ''));
+
+      for (let i = 0; i < names.length; i++) {
+        if (!results.find(r => r.name.toLowerCase() === names[i].toLowerCase())) {
+          results.push({
+            name: names[i],
+            phone: phones[i] || '',
+            address: `${city}, ${country}`,
+            website: websites[i] || '',
+            rating: '⭐ 4.5',
+            source: 'Google Maps',
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[GoogleLocal] Parse error:', err);
     }
-
-    // Extract phones
-    const phones = extractPhones(html.replace(/<[^>]*>/g, ' '));
-
-    // Extract websites
-    const websiteMatches = html.match(/href="(https?:\/\/(?!(?:google|gstatic|youtube|facebook\.com\/sharer)[^"]*)[^"]{5,100})"/g) || [];
-    const websites = websiteMatches.map(w => w.replace(/^href="/, '').replace(/"$/, ''));
-
-    // Build results
-    for (let i = 0; i < names.length; i++) {
-      results.push({
-        name: names[i],
-        phone: phones[i] || '',
-        address: `${city}, ${country}`,
-        website: websites[i] || '',
-        rating: '⭐ 4.5',
-        category: niche,
-        mapsUrl: `https://www.google.com/maps/search/${encodeURIComponent(names[i] + ' ' + city)}`,
-      });
-    }
-
-  } catch (err) {
-    console.error('[GoogleLocal] Parse error:', err);
   }
 
   console.log(`[GoogleLocal] Extracted ${results.length} businesses`);
@@ -230,46 +214,50 @@ async function scrapeGoogleLocalPlaces(niche: string, city: string, country: str
 }
 
 // ════════════════════════════════════════════════════
-// OPENSTREETMAP (OSM MAPS) SCRAPER — 100% Free API
+// 2. OPENSTREETMAP (OSM MAPS) SCRAPER
 // ════════════════════════════════════════════════════
-async function scrapeOSMMaps(niche: string, city: string, country: string): Promise<GoogleBusiness[]> {
-  const results: GoogleBusiness[] = [];
+async function scrapeOSMMaps(niche: string, city: string, country: string): Promise<BusinessItem[]> {
+  const results: BusinessItem[] = [];
   try {
-    const query = `${niche} ${city} ${country}`;
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&extratags=1&limit=25`;
-    
-    console.log(`[OSMMaps] Fetching: ${url}`);
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'BulkEmailSenderApp/1.0 (contact@dot-skills.com)',
-        'Accept': 'application/json',
-      }
-    });
+    const queries = [
+      `${niche} ${city} ${country}`,
+      `${niche} in ${city}`,
+    ];
 
-    if (!res.ok) return results;
-    const data = await res.json();
+    for (const q of queries) {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&extratags=1&limit=40`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'BulkEmailSenderApp/1.0 (contact@dot-skills.com)',
+          'Accept': 'application/json',
+        }
+      });
 
-    if (Array.isArray(data)) {
-      for (const item of data) {
-        const name = item.display_name ? item.display_name.split(',')[0].trim() : '';
-        if (!name || name.length < 3) continue;
+      if (!res.ok) continue;
+      const data = await res.json();
 
-        const addr = item.address ? 
-          [item.address.road, item.address.suburb, item.address.city || item.address.town, item.address.country].filter(Boolean).join(', ') 
-          : item.display_name;
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          const name = item.display_name ? item.display_name.split(',')[0].trim() : '';
+          if (!name || name.length < 3) continue;
 
-        const phone = item.extratags?.phone || item.extratags?.['contact:phone'] || '';
-        const website = item.extratags?.website || item.extratags?.['contact:website'] || '';
+          const addr = item.address ? 
+            [item.address.road, item.address.suburb, item.address.city || item.address.town, item.address.country].filter(Boolean).join(', ') 
+            : item.display_name;
 
-        results.push({
-          name,
-          phone,
-          address: addr || `${city}, ${country}`,
-          website,
-          rating: '📍 Map Place',
-          category: niche,
-          mapsUrl: `https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lon}`,
-        });
+          const phone = item.extratags?.phone || item.extratags?.['contact:phone'] || '';
+          const website = item.extratags?.website || item.extratags?.['contact:website'] || '';
+
+          if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+            results.push({
+              name,
+              phone,
+              address: addr || `${city}, ${country}`,
+              website,
+              source: 'Google Maps',
+            });
+          }
+        }
       }
     }
   } catch (err) {
@@ -281,19 +269,106 @@ async function scrapeOSMMaps(niche: string, city: string, country: string): Prom
 }
 
 // ════════════════════════════════════════════════════
-// GOOGLE SEARCH SCRAPER
+// 3. BING LOCAL & SEARCH SCRAPER (High Yield)
 // ════════════════════════════════════════════════════
-async function scrapeGoogleSearch(niche: string, city: string, country: string): Promise<GoogleBusiness[]> {
-  const results: GoogleBusiness[] = [];
+async function scrapeBingSearch(niche: string, city: string, country: string): Promise<BusinessItem[]> {
+  const results: BusinessItem[] = [];
+  const query = `${niche} ${city} ${country} phone email contact address`;
+  const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=40`;
+
+  console.log(`[BingSearch] Fetching: ${url}`);
+  const html = await fetchHtml(url, 12000);
+
+  if (!html || html.length < 3000) return results;
+
+  try {
+    // Extract Bing business titles + websites
+    const titleUrlRegex = /<h2[^>]*><a[^>]*href="(https?:\/\/[^"]+)"[^>]*>([^<]+)<\/a><\/h2>/gi;
+    let m;
+    while ((m = titleUrlRegex.exec(html)) !== null) {
+      const siteUrl = m[1];
+      const name = decodeHtml(m[2]).trim();
+
+      if (
+        name.length > 2 && name.length < 80 &&
+        !siteUrl.includes('bing.com') && !siteUrl.includes('microsoft.com') &&
+        !siteUrl.includes('facebook.com') && !siteUrl.includes('twitter.com')
+      ) {
+        if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+          results.push({
+            name,
+            phone: '',
+            address: `${city}, ${country}`,
+            website: siteUrl,
+            source: 'Bing Search',
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[BingSearch] Error:', err);
+  }
+
+  console.log(`[BingSearch] Found ${results.length} businesses`);
+  return results;
+}
+
+// ════════════════════════════════════════════════════
+// 4. DUCKDUCKGO HTML SCRAPER
+// ════════════════════════════════════════════════════
+async function scrapeDuckDuckGo(niche: string, city: string, country: string): Promise<BusinessItem[]> {
+  const results: BusinessItem[] = [];
+  const query = `${niche} in ${city} ${country} business contact`;
+  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+
+  const html = await fetchHtml(url, 12000);
+  if (!html || html.length < 3000) return results;
+
+  try {
+    const linkRegex = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
+    let m;
+    while ((m = linkRegex.exec(html)) !== null) {
+      let rawUrl = m[1];
+      const name = decodeHtml(m[2]).trim();
+
+      const uddgMatch = rawUrl.match(/uddg=([^&]+)/);
+      if (uddgMatch) {
+        rawUrl = decodeURIComponent(uddgMatch[1]);
+      }
+
+      if (
+        name.length > 2 && name.length < 80 &&
+        rawUrl.startsWith('http') &&
+        !rawUrl.includes('duckduckgo.com') && !rawUrl.includes('wikipedia.org')
+      ) {
+        if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+          results.push({
+            name,
+            phone: '',
+            address: `${city}, ${country}`,
+            website: rawUrl,
+            source: 'DuckDuckGo',
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[DuckDuckGo] Error:', err);
+  }
+
+  console.log(`[DuckDuckGo] Found ${results.length} results`);
+  return results;
+}
+
+// ════════════════════════════════════════════════════
+// 5. GOOGLE SEARCH SCRAPER
+// ════════════════════════════════════════════════════
+async function scrapeGoogleSearch(niche: string, city: string, country: string): Promise<BusinessItem[]> {
+  const results: BusinessItem[] = [];
   const query = `${niche} ${city} ${country} contact email phone`;
-  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=20&gl=us&hl=en`;
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=30&gl=us&hl=en`;
 
-  console.log(`[GSearch] Fetching: ${url}`);
-
-  const html = await fetchHtml(url, 12000, {
-    'Cookie': 'CONSENT=YES+;',
-  });
-
+  const html = await fetchHtml(url, 12000, { 'Cookie': 'CONSENT=YES+;' });
   if (!html || html.length < 3000) return results;
 
   try {
@@ -318,16 +393,14 @@ async function scrapeGoogleSearch(niche: string, city: string, country: string):
       }
     }
 
-    for (let i = 0; i < Math.min(titles.length, 20); i++) {
+    for (let i = 0; i < Math.min(titles.length, 30); i++) {
       if (!results.find(r => r.name.toLowerCase() === titles[i].toLowerCase())) {
         results.push({
           name: titles[i],
           phone: '',
           address: `${city}, ${country}`,
           website: urls[i] || '',
-          rating: '',
-          category: niche,
-          mapsUrl: '',
+          source: 'Google Search',
         });
       }
     }
@@ -340,7 +413,7 @@ async function scrapeGoogleSearch(niche: string, city: string, country: string):
 }
 
 // ════════════════════════════════════════════════════
-// YELP SCRAPER
+// 6. YELP SCRAPER
 // ════════════════════════════════════════════════════
 interface YelpBusiness {
   name: string;
@@ -449,7 +522,7 @@ async function getYelpWebsite(yelpUrl: string): Promise<string> {
 }
 
 // ════════════════════════════════════════════════════
-// YELLOW PAGES SCRAPER
+// 7. YELLOW PAGES SCRAPER
 // ════════════════════════════════════════════════════
 interface YPBusiness {
   name: string;
@@ -520,7 +593,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'Niche and city are required' }, { status: 400 });
     }
 
-    const maxItems = Math.min(maxResults || 10, 100);
+    const maxItems = Math.min(maxResults || 50, 100);
     const encoder = new TextEncoder();
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
@@ -538,12 +611,14 @@ export async function POST(request: Request) {
       };
 
       try {
-        console.log(`[LeadFinder] ${niche} in ${city}, ${country}`);
+        console.log(`[LeadFinder] Scraping: ${niche} in ${city}, ${country}`);
 
-        // ── Run map & local scrapers in parallel ──────────────
-        const [gLocalResults, osmResults, gsearchResults, yelpResults, ypResults] = await Promise.allSettled([
+        // ── Parallel execution across 6 scrapers ──────────────
+        const [gLocalResults, osmResults, bingResults, ddgResults, gsearchResults, yelpResults, ypResults] = await Promise.allSettled([
           scrapeGoogleLocalPlaces(niche, city, country),
           scrapeOSMMaps(niche, city, country),
+          scrapeBingSearch(niche, city, country),
+          scrapeDuckDuckGo(niche, city, country),
           scrapeGoogleSearch(niche, city, country),
           searchYelp(niche, city),
           searchYellowPages(niche, city),
@@ -551,23 +626,35 @@ export async function POST(request: Request) {
 
         const gLocalBiz = gLocalResults.status === 'fulfilled' ? gLocalResults.value : [];
         const osmBiz = osmResults.status === 'fulfilled' ? osmResults.value : [];
+        const bingBiz = bingResults.status === 'fulfilled' ? bingResults.value : [];
+        const ddgBiz = ddgResults.status === 'fulfilled' ? ddgResults.value : [];
         const gSearchBiz = gsearchResults.status === 'fulfilled' ? gsearchResults.value : [];
         const yelpBiz = yelpResults.status === 'fulfilled' ? yelpResults.value : [];
         const ypBiz = ypResults.status === 'fulfilled' ? ypResults.value : [];
 
-        console.log(`[LeadFinder] Sources: GLocal=${gLocalBiz.length} OSM=${osmBiz.length} GSearch=${gSearchBiz.length} Yelp=${yelpBiz.length} YP=${ypBiz.length}`);
+        console.log(`[LeadFinder] Yield: GLocal=${gLocalBiz.length} OSM=${osmBiz.length} Bing=${bingBiz.length} DDG=${ddgBiz.length} GSearch=${gSearchBiz.length} Yelp=${yelpBiz.length} YP=${ypBiz.length}`);
 
-        // ── 1. Process Google Local Maps results ───────────────
-        for (const biz of gLocalBiz) {
+        const allRawItems = [
+          ...gLocalBiz,
+          ...osmBiz,
+          ...bingBiz,
+          ...ddgBiz,
+          ...gSearchBiz,
+          ...yelpBiz.map(b => ({ name: b.name, phone: b.phone, address: b.address, website: b.website || b.yelpUrl, source: 'Yelp' })),
+          ...ypBiz.map(b => ({ name: b.name, phone: b.phone, address: b.address, website: b.website, source: 'Yellow Pages' })),
+        ];
+
+        for (const item of allRawItems) {
           if (totalFound >= maxItems) break;
-          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
-          seenNames.add(biz.name.toLowerCase());
+          if (!item.name || seenNames.has(item.name.toLowerCase())) continue;
+          seenNames.add(item.name.toLowerCase());
 
           let email = '';
-          let phone = biz.phone;
-          let website = biz.website;
+          let phone = item.phone;
+          let website = item.website;
 
-          if (website) {
+          // Deep scrape website for contact info
+          if (website && website.startsWith('http') && !website.includes('yelp.com')) {
             const contacts = await scrapeWebsiteForContacts(website);
             email = contacts.email;
             if (!phone && contacts.phone) phone = contacts.phone;
@@ -575,173 +662,24 @@ export async function POST(request: Request) {
 
           const lead = {
             id: crypto.randomUUID(),
-            businessName: biz.name,
+            businessName: item.name,
             email,
             phone,
             website,
-            address: biz.address || `${city}, ${country}`,
+            address: item.address || `${city}, ${country}`,
             niche, city, country,
             status: 'new',
-            notes: '📍 Google Maps',
-            source: 'Google Maps',
+            notes: `📍 ${item.source}`,
+            source: item.source,
             communicationHistory: [],
             createdAt: Date.now(),
           };
 
           totalFound++;
           await writeLead(lead);
-          await new Promise(r => setTimeout(r, 100));
+          await new Promise(r => setTimeout(r, 60));
         }
 
-        // ── 2. Process OpenStreetMap Places results ────────────
-        for (const biz of osmBiz) {
-          if (totalFound >= maxItems) break;
-          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
-          seenNames.add(biz.name.toLowerCase());
-
-          let email = '';
-          let phone = biz.phone;
-          let website = biz.website;
-
-          if (website) {
-            const contacts = await scrapeWebsiteForContacts(website);
-            email = contacts.email;
-            if (!phone && contacts.phone) phone = contacts.phone;
-          }
-
-          const lead = {
-            id: crypto.randomUUID(),
-            businessName: biz.name,
-            email,
-            phone,
-            website,
-            address: biz.address || `${city}, ${country}`,
-            niche, city, country,
-            status: 'new',
-            notes: '📍 Map Location',
-            source: 'Google Maps',
-            communicationHistory: [],
-            createdAt: Date.now(),
-          };
-
-          totalFound++;
-          await writeLead(lead);
-          await new Promise(r => setTimeout(r, 100));
-        }
-
-        // ── 3. Process Google Search results ─────────────
-        for (const biz of gSearchBiz) {
-          if (totalFound >= maxItems) break;
-          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
-          seenNames.add(biz.name.toLowerCase());
-
-          let email = '';
-          let phone = biz.phone;
-          const website = biz.website;
-
-          if (website) {
-            const contacts = await scrapeWebsiteForContacts(website);
-            email = contacts.email;
-            if (!phone && contacts.phone) phone = contacts.phone;
-          }
-
-          const lead = {
-            id: crypto.randomUUID(),
-            businessName: biz.name,
-            email,
-            phone,
-            website,
-            address: biz.address || `${city}, ${country}`,
-            niche, city, country,
-            status: 'new',
-            notes: '🔍 Google Search',
-            source: 'Google Search',
-            communicationHistory: [],
-            createdAt: Date.now(),
-          };
-
-          totalFound++;
-          await writeLead(lead);
-          await new Promise(r => setTimeout(r, 100));
-        }
-
-        // ── 4. Process Yelp results ──────────────────────
-        for (const biz of yelpBiz) {
-          if (totalFound >= maxItems) break;
-          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
-          seenNames.add(biz.name.toLowerCase());
-
-          let email = '';
-          let phone = biz.phone;
-          let website = biz.website;
-
-          if (!website && biz.yelpUrl) {
-            website = await getYelpWebsite(biz.yelpUrl);
-          }
-
-          if (website) {
-            const contacts = await scrapeWebsiteForContacts(website);
-            email = contacts.email;
-            if (!phone && contacts.phone) phone = contacts.phone;
-          }
-
-          const lead = {
-            id: crypto.randomUUID(),
-            businessName: biz.name,
-            email,
-            phone,
-            website: website || biz.yelpUrl,
-            address: biz.address || `${city}, ${country}`,
-            niche, city, country,
-            status: 'new',
-            notes: biz.rating ? `⭐ ${biz.rating} (${biz.reviewCount} reviews) · Yelp` : '⭐ Yelp',
-            source: 'Yelp',
-            communicationHistory: [],
-            createdAt: Date.now(),
-          };
-
-          totalFound++;
-          await writeLead(lead);
-          await new Promise(r => setTimeout(r, 100));
-        }
-
-        // ── 5. Process Yellow Pages results ──────────────
-        for (const biz of ypBiz) {
-          if (totalFound >= maxItems) break;
-          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
-          seenNames.add(biz.name.toLowerCase());
-
-          let email = '';
-          let phone = biz.phone;
-          let website = biz.website;
-
-          if (website) {
-            const contacts = await scrapeWebsiteForContacts(website);
-            email = contacts.email;
-            if (!phone && contacts.phone) phone = contacts.phone;
-          }
-
-          const lead = {
-            id: crypto.randomUUID(),
-            businessName: biz.name,
-            email,
-            phone,
-            website,
-            address: biz.address || `${city}, ${country}`,
-            niche, city, country,
-            status: 'new',
-            notes: '📋 Yellow Pages',
-            source: 'Yellow Pages',
-            communicationHistory: [],
-            createdAt: Date.now(),
-          };
-
-          totalFound++;
-          await writeLead(lead);
-          await new Promise(r => setTimeout(r, 100));
-        }
-
-        // ── Final response ────────────────────────────
         if (totalFound > 0) {
           await writer.write(encoder.encode(
             JSON.stringify({ _done: true, total: totalFound }) + '\n'
