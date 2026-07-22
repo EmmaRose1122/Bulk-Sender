@@ -10,7 +10,7 @@ def main():
     print("=" * 65)
 
     # 1. Ask for Web App URL
-    default_url = "http://localhost:3000"
+    default_url = "https://lead-finder-bulk-sender.vercel.app"
     user_url = input(f"Enter Bulk Sender App Domain (Press Enter for '{default_url}'): ").strip()
     target_url = user_url if user_url else default_url
 

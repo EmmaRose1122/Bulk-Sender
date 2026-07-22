@@ -89,7 +89,7 @@ class GMapsScraperGUI:
 
         tk.Label(card, text="App URL:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=1, column=2, sticky="w", padx=5, pady=5)
         self.app_url_entry = ttk.Entry(card, width=42, font=("Segoe UI", 10))
-        self.app_url_entry.insert(0, "http://localhost:3001")
+        self.app_url_entry.insert(0, "https://lead-finder-bulk-sender.vercel.app")
         self.app_url_entry.grid(row=1, column=3, columnspan=3, sticky="we", padx=5, pady=5)
 
         # Action Buttons Frame
