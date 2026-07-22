@@ -438,7 +438,7 @@ Web Development | SEO | Local SEO | Social Media Marketing`
   return (
     <div className="flex h-full min-h-0 gap-0 animate-in fade-in duration-500 relative flex-1">
       {/* Main Content */}
-      <div className={cn('flex-1 min-w-0 flex flex-col space-y-6 transition-all duration-300 h-full min-h-0', selectedLead ? 'pr-[380px]' : '')}>
+      <div className={cn('flex-1 min-w-0 flex flex-col space-y-6 transition-all duration-300 h-full min-h-0', selectedLead ? 'lg:pr-[380px]' : '')}>
         
         {/* Header with Export/Import */}
         <header className="flex items-center justify-between">
@@ -636,7 +636,7 @@ Web Development | SEO | Local SEO | Social Media Marketing`
 
       {/* Side Panel */}
       {selectedLead && (
-        <div className="fixed right-0 top-0 bottom-0 w-[380px] bg-white border-l border-slate-200 shadow-2xl flex flex-col z-50 overflow-hidden">
+        <div className="fixed right-0 top-0 bottom-0 w-full sm:w-[380px] bg-white border-l border-slate-200 shadow-2xl flex flex-col z-50 overflow-hidden">
           {/* Panel Header */}
           <div className="flex items-start justify-between p-6 border-b border-slate-100">
             <div>
@@ -815,7 +815,7 @@ Web Development | SEO | Local SEO | Social Media Marketing`
 
       {/* Send Email Dialog */}
       <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
-        <DialogContent className="max-w-2xl bg-white border-none shadow-2xl rounded-3xl">
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[92vh] overflow-y-auto custom-scrollbar bg-white border-none shadow-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-6">
           <DialogHeader className="pb-4 border-b border-slate-100">
             <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center text-white">
@@ -880,7 +880,7 @@ Web Development | SEO | Local SEO | Social Media Marketing`
             </div>
           )}
 
-          <DialogFooter className="flex items-center justify-between sm:justify-between border-t border-slate-100 pt-4">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between border-t border-slate-100 pt-4 gap-3">
             <Button 
               variant="ghost" 
               onClick={handleRegenerateEmail}

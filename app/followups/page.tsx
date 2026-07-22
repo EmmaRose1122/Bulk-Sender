@@ -153,7 +153,7 @@ export default function FollowUpsPage() {
   return (
     <div className="flex flex-col h-full space-y-8 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 overflow-y-auto custom-scrollbar pr-2">
       {/* Header */}
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Follow-ups</h1>
           <p className="text-slate-500 font-medium mt-1">AI-generated follow-up messages for non-responsive leads</p>
