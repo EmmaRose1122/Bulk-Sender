@@ -68,6 +68,8 @@ interface AppContextType {
     addLeads: (leads: Lead[]) => void;
     updateLead: (lead: Lead) => void;
     removeLead: (id: string) => void;
+    removeLeads: (ids: string[]) => void;
+    clearAllLeads: () => void;
 
     followUps: FollowUp[];
     addFollowUp: (fu: FollowUp) => void;
@@ -268,6 +270,15 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
         setLeads(prev => prev.filter(l => l.id !== id));
     };
 
+    const removeLeads = (ids: string[]) => {
+        const idSet = new Set(ids);
+        setLeads(prev => prev.filter(l => !idSet.has(l.id)));
+    };
+
+    const clearAllLeads = () => {
+        setLeads([]);
+    };
+
     const addFollowUp = (fu: FollowUp) => {
         setFollowUps(prev => [fu, ...prev]);
     };
@@ -323,6 +334,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
                 addLeads,
                 updateLead,
                 removeLead,
+                removeLeads,
+                clearAllLeads,
                 followUps,
                 addFollowUp,
                 updateFollowUp,

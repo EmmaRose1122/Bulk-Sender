@@ -27,7 +27,7 @@ const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: stri
 };
 
 export default function LeadsListPage() {
-  const { leads, updateLead, removeLead, addLeads, smtpConfigs, googleApiSettings } = useAppContext();
+  const { leads, updateLead, removeLead, removeLeads, clearAllLeads, addLeads, smtpConfigs, googleApiSettings } = useAppContext();
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all');
@@ -92,12 +92,22 @@ export default function LeadsListPage() {
     setSelectedLeadIds(new Set());
   };
 
-  const handleBulkDelete = () => {
-    selectedLeadIds.forEach(id => {
-      removeLead(id);
-      if (selectedLead?.id === id) closePanel();
-    });
-    toast.success(`Deleted ${selectedLeadIds.size} leads`);
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedLeadIds);
+    if (ids.length === 0) return;
+
+    removeLeads(ids);
+    if (selectedLead && ids.includes(selectedLead.id)) closePanel();
+
+    try {
+      await fetch('/api/leads/push', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+    } catch { }
+
+    toast.success(`Successfully deleted ${ids.length} leads!`);
     setSelectedLeadIds(new Set());
   };
 

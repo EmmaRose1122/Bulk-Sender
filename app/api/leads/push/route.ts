@@ -16,11 +16,11 @@ interface IncomingLead {
 }
 
 // In-memory server store for pushed leads across API requests
-const globalPushedLeads: any[] = [];
+let globalPushedLeads: any[] = [];
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
@@ -33,6 +33,34 @@ export async function GET() {
     { success: true, count: globalPushedLeads.length, leads: globalPushedLeads },
     { headers: corsHeaders }
   );
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const { ids, clearAll } = body;
+
+    if (clearAll) {
+      globalPushedLeads = [];
+      return NextResponse.json({ success: true, message: 'Cleared all server leads', count: 0 }, { headers: corsHeaders });
+    }
+
+    if (Array.isArray(ids) && ids.length > 0) {
+      const deleteSet = new Set(ids);
+      globalPushedLeads = globalPushedLeads.filter(l => !deleteSet.has(l.id));
+      return NextResponse.json(
+        { success: true, message: `Deleted ${ids.length} leads`, count: globalPushedLeads.length },
+        { headers: corsHeaders }
+      );
+    }
+
+    // Default clear all if empty DELETE request
+    globalPushedLeads = [];
+    return NextResponse.json({ success: true, message: 'Cleared server leads', count: 0 }, { headers: corsHeaders });
+
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message || 'Delete failed' }, { status: 500, headers: corsHeaders });
+  }
 }
 
 export async function POST(request: Request) {
