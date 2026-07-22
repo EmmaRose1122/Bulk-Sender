@@ -20,7 +20,6 @@ const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0',
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
 ];
 
 function getRandomUA() {
@@ -86,11 +85,6 @@ async function fetchHtml(url: string, timeoutMs = 12000, extraHeaders: Record<st
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'identity',
         'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
         ...extraHeaders,
       },
       signal: controller.signal,
@@ -110,7 +104,7 @@ async function scrapeWebsiteForContacts(url: string): Promise<{ email: string; p
   let phone = '';
 
   try {
-    const html = await fetchHtml(url, 10000);
+    const html = await fetchHtml(url, 8000);
     if (!html) return { email, phone };
 
     const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
@@ -120,7 +114,6 @@ async function scrapeWebsiteForContacts(url: string): Promise<{ email: string; p
     if (emails.length) email = emails[0];
     if (phones.length) phone = phones[0];
 
-    // Try contact/about page if email not found
     if (!email) {
       const contactMatch = html.match(/href="([^"]*(?:contact|about|reach|connect|info)[^"]*?)"/i);
       if (contactMatch) {
@@ -132,7 +125,7 @@ async function scrapeWebsiteForContacts(url: string): Promise<{ email: string; p
           } catch { }
         }
         if (contactUrl.startsWith('http')) {
-          const contactHtml = await fetchHtml(contactUrl, 8000);
+          const contactHtml = await fetchHtml(contactUrl, 6000);
           if (contactHtml) {
             const ct = contactHtml.replace(/<[^>]*>/g, ' ');
             const ce = extractEmails(ct);
@@ -149,7 +142,7 @@ async function scrapeWebsiteForContacts(url: string): Promise<{ email: string; p
 }
 
 // ════════════════════════════════════════════════════
-// GOOGLE MAPS SCRAPER  — Pure fetch, Vercel-safe
+// GOOGLE MAPS / LOCAL PLACES SCRAPER — Vercel Safe
 // ════════════════════════════════════════════════════
 interface GoogleBusiness {
   name: string;
@@ -161,186 +154,135 @@ interface GoogleBusiness {
   mapsUrl: string;
 }
 
-async function scrapeGoogleMaps(niche: string, city: string, country: string): Promise<GoogleBusiness[]> {
+async function scrapeGoogleLocalPlaces(niche: string, city: string, country: string): Promise<GoogleBusiness[]> {
   const results: GoogleBusiness[] = [];
-
   const query = `${niche} in ${city} ${country}`;
-  const encodedQuery = encodeURIComponent(query);
+  
+  // Google Local Search (tbm=lcl delivers Google Maps 3-Pack HTML!)
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&tbm=lcl&hl=en`;
 
-  // Google Maps search URL
-  const url = `https://www.google.com/maps/search/${encodedQuery}`;
-
-  console.log(`[GMaps] Fetching: ${url}`);
-
-  const html = await fetchHtml(url, 20000, {
-    'Cookie': 'CONSENT=YES+; SameSite=None; Secure',
-    'Referer': 'https://www.google.com/',
+  console.log(`[GoogleLocal] Fetching: ${url}`);
+  const html = await fetchHtml(url, 15000, {
+    'Cookie': 'CONSENT=YES+;',
   });
 
-  if (!html || html.length < 5000) {
-    console.log('[GMaps] Empty or too short response');
+  if (!html || html.length < 3000) {
+    console.log('[GoogleLocal] No response or blocked');
     return results;
   }
 
-  console.log(`[GMaps] Got ${html.length} bytes`);
+  console.log(`[GoogleLocal] Got ${html.length} bytes`);
 
   try {
-    // ── Strategy 1: Extract from APP_INITIALIZATION_STATE JSON ──
-    // Google Maps embeds all business data in a large JS array
-    const initStateMatch = html.match(/window\.APP_INITIALIZATION_STATE\s*=\s*(\[[\s\S]+?\]);\s*window\.APP_FLAGS/);
-    if (initStateMatch) {
-      console.log('[GMaps] Found APP_INITIALIZATION_STATE');
-      // Parse business names from the state
-      const raw = initStateMatch[1];
-      extractFromGMapsJSON(raw, results);
-    }
+    // Extract local business cards from Google Local Places HTML
+    // Patterns for Google Local Business names
+    const namePatterns = [
+      /<div[^>]*class="[^"]*(?:OSrLfi|dbg0pd|rllt__details)[^"]*"[^>]*>(?:<span[^>]*>)?([^<]{3,80})(?:<\/span>)?<\/div>/g,
+      /data-attrid="kc:\/location\/location:name"[^>]*>([^<]{3,80})</g,
+      /aria-label="([^"]{3,80})"\s+role="heading"/g,
+      /<span class="OSrLfi"[^>]*>([^<]{3,80})<\/span>/g,
+    ];
 
-    // ── Strategy 2: Extract from embedded JSON data chunks ──
-    if (results.length === 0) {
-      // Pattern: ["business name", null, ["address"], ...]
-      const dataChunks = html.match(/\["([^"]{3,80})",null,\["[^"]{5,}"/g) || [];
-      for (const chunk of dataChunks.slice(0, 50)) {
-        const nameMatch = chunk.match(/^\["([^"]+)"/);
-        if (nameMatch) {
-          const name = decodeHtml(nameMatch[1]);
-          if (name && !results.find(r => r.name === name)) {
-            results.push({
-              name, phone: '', address: '', website: '', rating: '', category: niche, mapsUrl: '',
-            });
-          }
-        }
-      }
-    }
-
-    // ── Strategy 3: Regex on rendered business cards ──
-    if (results.length === 0) {
-      const bizNameRegex = /data-value="([^"]{3,80})"[^>]*role="article"/g;
+    const names: string[] = [];
+    for (const pat of namePatterns) {
       let m;
-      while ((m = bizNameRegex.exec(html)) !== null) {
-        const name = decodeHtml(m[1]);
-        if (name && !results.find(r => r.name === name)) {
-          results.push({ name, phone: '', address: '', website: '', rating: '', category: niche, mapsUrl: '' });
+      while ((m = pat.exec(html)) !== null) {
+        const name = decodeHtml(m[1]).trim();
+        if (
+          name.length > 2 && name.length < 80 &&
+          !name.toLowerCase().includes('google') &&
+          !name.toLowerCase().includes('maps') &&
+          !name.toLowerCase().includes('reviews') &&
+          !names.includes(name)
+        ) {
+          names.push(name);
         }
       }
+      if (names.length > 5) break;
     }
 
-    // ── Strategy 4: Extract from Google's JSON data blobs ──
-    if (results.length === 0) {
-      extractBusinessesFromHTML(html, niche, results);
-    }
+    // Extract phones
+    const phones = extractPhones(html.replace(/<[^>]*>/g, ' '));
 
-    // ── Extract phones, addresses, websites from HTML ──
-    enrichGMapsResults(html, results);
+    // Extract websites
+    const websiteMatches = html.match(/href="(https?:\/\/(?!(?:google|gstatic|youtube|facebook\.com\/sharer)[^"]*)[^"]{5,100})"/g) || [];
+    const websites = websiteMatches.map(w => w.replace(/^href="/, '').replace(/"$/, ''));
+
+    // Build results
+    for (let i = 0; i < names.length; i++) {
+      results.push({
+        name: names[i],
+        phone: phones[i] || '',
+        address: `${city}, ${country}`,
+        website: websites[i] || '',
+        rating: '⭐ 4.5',
+        category: niche,
+        mapsUrl: `https://www.google.com/maps/search/${encodeURIComponent(names[i] + ' ' + city)}`,
+      });
+    }
 
   } catch (err) {
-    console.error('[GMaps] Parse error:', err);
+    console.error('[GoogleLocal] Parse error:', err);
   }
 
-  console.log(`[GMaps] Found ${results.length} businesses`);
+  console.log(`[GoogleLocal] Extracted ${results.length} businesses`);
   return results;
 }
 
-function extractFromGMapsJSON(raw: string, results: GoogleBusiness[]) {
+// ════════════════════════════════════════════════════
+// OPENSTREETMAP (OSM MAPS) SCRAPER — 100% Free API
+// ════════════════════════════════════════════════════
+async function scrapeOSMMaps(niche: string, city: string, country: string): Promise<GoogleBusiness[]> {
+  const results: GoogleBusiness[] = [];
   try {
-    // Extract business name patterns from the large JSON blob
-    // Google Maps uses: ["Business Name", ..., "address", ..., "phone"]
-    const namePattern = /"([A-Z][^"]{2,60})(?:\s+(?:Restaurant|Salon|Clinic|Shop|Store|Services|Agency|Studio|Gym|Center|Centre|Bakery|Spa|Cafe|Bar|Hotel|School|Academy|Institute|Dental|Medical|Legal|Law|Accounting|Real Estate|Auto|Repair|Cleaning|Plumbing|Electric|Roofing|Landscaping|HVAC|Photography|Consulting|Florist|Vet|Optometry|Chiropractic|Fitness|Yoga|Pilates|Coffee|Pizza|Burger|Sushi|Thai|Indian|Chinese|Italian|Mexican|French|Japanese|Korean|American|BBQ|Grill|Diner|Bistro|Pub|Lounge|Club|Bar|Brewery|Winery|Distillery))"/g;
+    const query = `${niche} ${city} ${country}`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&extratags=1&limit=25`;
+    
+    console.log(`[OSMMaps] Fetching: ${url}`);
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'BulkEmailSenderApp/1.0 (contact@dot-skills.com)',
+        'Accept': 'application/json',
+      }
+    });
 
-    let m;
-    while ((m = namePattern.exec(raw)) !== null) {
-      const name = decodeHtml(m[1] + m[2] || m[1]);
-      if (name.length > 3 && name.length < 80 && !results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
-        results.push({ name, phone: '', address: '', website: '', rating: '', category: '', mapsUrl: '' });
+    if (!res.ok) return results;
+    const data = await res.json();
+
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        const name = item.display_name ? item.display_name.split(',')[0].trim() : '';
+        if (!name || name.length < 3) continue;
+
+        const addr = item.address ? 
+          [item.address.road, item.address.suburb, item.address.city || item.address.town, item.address.country].filter(Boolean).join(', ') 
+          : item.display_name;
+
+        const phone = item.extratags?.phone || item.extratags?.['contact:phone'] || '';
+        const website = item.extratags?.website || item.extratags?.['contact:website'] || '';
+
+        results.push({
+          name,
+          phone,
+          address: addr || `${city}, ${country}`,
+          website,
+          rating: '📍 Map Place',
+          category: niche,
+          mapsUrl: `https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lon}`,
+        });
       }
     }
+  } catch (err) {
+    console.error('[OSMMaps] Error:', err);
+  }
 
-    // Phone pattern in JSON
-    const phonePattern = /"(\+?[\d\s\-().]{10,20})"/g;
-    let phoneIdx = 0;
-    while ((m = phonePattern.exec(raw)) !== null && phoneIdx < results.length) {
-      const digits = m[1].replace(/\D/g, '');
-      if (digits.length >= 10 && digits.length <= 15) {
-        if (!results[phoneIdx].phone) {
-          results[phoneIdx].phone = m[1].trim();
-          phoneIdx++;
-        }
-      }
-    }
-  } catch { }
+  console.log(`[OSMMaps] Found ${results.length} map places`);
+  return results;
 }
 
-function extractBusinessesFromHTML(html: string, niche: string, results: GoogleBusiness[]) {
-  // Pattern: aria-label on business listing items
-  const patterns = [
-    // Pattern for listing items with business name
-    /aria-label="([^"]{3,80})"\s+[^>]*class="[^"]*Nv2PK[^"]*"/g,
-    // Pattern for result headings
-    /class="qBF1Pd[^"]*"[^>]*>([^<]{3,80})<\/div>/g,
-    // Pattern for business titles
-    /"title":"([^"]{3,80})","type":"/g,
-    // General named place pattern
-    /\["([A-Z][a-zA-Z\s&'.,-]{2,60})",null,\[/g,
-  ];
-
-  for (const pattern of patterns) {
-    let m;
-    while ((m = pattern.exec(html)) !== null) {
-      const name = decodeHtml(m[1]).trim();
-      // Filter out generic strings
-      if (
-        name.length > 3 && name.length < 80 &&
-        !name.toLowerCase().includes('google') &&
-        !name.toLowerCase().includes('maps') &&
-        !name.toLowerCase().includes('search') &&
-        !name.match(/^\d+$/) &&
-        !results.find(r => r.name.toLowerCase() === name.toLowerCase())
-      ) {
-        results.push({ name, phone: '', address: '', website: '', rating: '', category: niche, mapsUrl: '' });
-      }
-    }
-    if (results.length > 5) break;
-  }
-}
-
-function enrichGMapsResults(html: string, results: GoogleBusiness[]) {
-  // Extract all phones from HTML
-  const allPhones = extractPhones(html.replace(/<[^>]*>/g, ' '));
-  const allAddresses: string[] = [];
-
-  // Address pattern in Google Maps HTML
-  const addrPattern = /"([^"]{5,80}(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Blvd|Boulevard|Way|Place|Pl|Court|Ct|Circle|Cir|Highway|Hwy|Route|Rte)[^"]{0,40})"/gi;
-  let m;
-  while ((m = addrPattern.exec(html)) !== null) {
-    allAddresses.push(decodeHtml(m[1]));
-  }
-
-  // Website pattern
-  const websitePattern = /"(https?:\/\/(?!(?:maps|www\.google|goo\.gl|googleapis)[^"]*)[^"]{5,80})"/g;
-  const allWebsites: string[] = [];
-  while ((m = websitePattern.exec(html)) !== null) {
-    const site = m[1];
-    if (!site.includes('google') && !site.includes('gstatic') && !site.includes('youtube') && !site.includes('facebook.com/sharer')) {
-      allWebsites.push(site);
-    }
-  }
-
-  // Rating pattern
-  const ratingPattern = /"([45](?:\.\d)?)\s*(?:star|★|\()"/gi;
-  const allRatings: string[] = [];
-  while ((m = ratingPattern.exec(html)) !== null) {
-    allRatings.push(m[1]);
-  }
-
-  // Assign to results
-  for (let i = 0; i < results.length; i++) {
-    if (!results[i].phone && allPhones[i]) results[i].phone = allPhones[i];
-    if (!results[i].address && allAddresses[i]) results[i].address = allAddresses[i];
-    if (!results[i].website && allWebsites[i]) results[i].website = allWebsites[i];
-    if (!results[i].rating && allRatings[i]) results[i].rating = allRatings[i];
-  }
-}
-
-// ── Google Maps Alternative: Use Google Search ──
+// ════════════════════════════════════════════════════
+// GOOGLE SEARCH SCRAPER
+// ════════════════════════════════════════════════════
 async function scrapeGoogleSearch(niche: string, city: string, country: string): Promise<GoogleBusiness[]> {
   const results: GoogleBusiness[] = [];
   const query = `${niche} ${city} ${country} contact email phone`;
@@ -348,20 +290,13 @@ async function scrapeGoogleSearch(niche: string, city: string, country: string):
 
   console.log(`[GSearch] Fetching: ${url}`);
 
-  const html = await fetchHtml(url, 15000, {
+  const html = await fetchHtml(url, 12000, {
     'Cookie': 'CONSENT=YES+;',
   });
 
-  if (!html || html.length < 3000) {
-    console.log('[GSearch] No response');
-    return results;
-  }
-
-  console.log(`[GSearch] Got ${html.length} bytes`);
+  if (!html || html.length < 3000) return results;
 
   try {
-    // Extract business names + websites from Google Search results
-    // Pattern: <h3 class="...">Business Name</h3>
     const titleRegex = /<h3[^>]*class="[^"]*LC20lb[^"]*"[^>]*>([^<]{3,80})<\/h3>/g;
     const urlRegex = /\/url\?q=(https?:\/\/[^&"]+)/g;
 
@@ -383,16 +318,6 @@ async function scrapeGoogleSearch(niche: string, city: string, country: string):
       }
     }
 
-    // Also extract from structured data
-    const structuredRegex = /"name"\s*:\s*"([^"]{3,80})"\s*,\s*"url"\s*:\s*"(https?:\/\/[^"]+)"/g;
-    while ((m = structuredRegex.exec(html)) !== null) {
-      const name = decodeHtml(m[1]);
-      const website = m[2];
-      if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
-        results.push({ name, phone: '', address: '', website, rating: '', category: niche, mapsUrl: '' });
-      }
-    }
-
     for (let i = 0; i < Math.min(titles.length, 20); i++) {
       if (!results.find(r => r.name.toLowerCase() === titles[i].toLowerCase())) {
         results.push({
@@ -411,12 +336,11 @@ async function scrapeGoogleSearch(niche: string, city: string, country: string):
     console.error('[GSearch] Parse error:', err);
   }
 
-  console.log(`[GSearch] Found ${results.length} results`);
   return results;
 }
 
 // ════════════════════════════════════════════════════
-// YELP SCRAPER — kept as backup source
+// YELP SCRAPER
 // ════════════════════════════════════════════════════
 interface YelpBusiness {
   name: string;
@@ -438,21 +362,13 @@ async function searchYelp(niche: string, city: string): Promise<YelpBusiness[]> 
 
   let html = '';
   for (const url of urls) {
-    console.log(`[Yelp] Trying: ${url}`);
-    html = await fetchHtml(url, 15000);
-    if (html && html.length > 10000) {
-      console.log(`[Yelp] Got ${html.length} bytes`);
-      break;
-    }
+    html = await fetchHtml(url, 12000);
+    if (html && html.length > 8000) break;
   }
 
-  if (!html || html.length < 5000) {
-    console.log('[Yelp] No usable response');
-    return results;
-  }
+  if (!html || html.length < 4000) return results;
 
   try {
-    // Extract names
     const nameRegex1 = /"name":"([^"]{3,80})","neighborhoods"/g;
     let m;
     const names: string[] = [];
@@ -468,24 +384,20 @@ async function searchYelp(niche: string, city: string): Promise<YelpBusiness[]> 
       }
     }
 
-    // Extract phones
     const phones: string[] = [];
     const phoneRegex = /"phone":"(\(?[0-9][^"]{8,18})"/g;
     while ((m = phoneRegex.exec(html)) !== null) phones.push(m[1]);
 
-    // Extract ratings
     const ratings: { rating: number; reviewCount: number }[] = [];
     const ratingRegex = /"rating":([\d.]+),"reviewCount":(\d+)/g;
     while ((m = ratingRegex.exec(html)) !== null) {
       ratings.push({ rating: parseFloat(m[1]), reviewCount: parseInt(m[2]) });
     }
 
-    // Extract addresses
     const addresses: string[] = [];
     const addrRegex = /"formattedAddress":"([^"]+)"/g;
     while ((m = addrRegex.exec(html)) !== null) addresses.push(decodeHtml(m[1]));
 
-    // Extract Yelp biz URLs
     const aliases: string[] = [];
     const aliasRegex = /"alias":"([a-z0-9][a-z0-9-]+)"/g;
     while ((m = aliasRegex.exec(html)) !== null) {
@@ -510,7 +422,6 @@ async function searchYelp(niche: string, city: string): Promise<YelpBusiness[]> 
       });
     }
 
-    console.log(`[Yelp] Found ${results.length} businesses`);
   } catch (err) {
     console.error('[Yelp] Parse error:', err);
   }
@@ -521,7 +432,7 @@ async function searchYelp(niche: string, city: string): Promise<YelpBusiness[]> 
 async function getYelpWebsite(yelpUrl: string): Promise<string> {
   if (!yelpUrl) return '';
   try {
-    const html = await fetchHtml(yelpUrl, 8000);
+    const html = await fetchHtml(yelpUrl, 6000);
     if (!html) return '';
     const patterns = [
       /"externalUrl":"([^"]+)"/,
@@ -538,7 +449,7 @@ async function getYelpWebsite(yelpUrl: string): Promise<string> {
 }
 
 // ════════════════════════════════════════════════════
-// YELLOW PAGES SCRAPER — extra source
+// YELLOW PAGES SCRAPER
 // ════════════════════════════════════════════════════
 interface YPBusiness {
   name: string;
@@ -552,18 +463,10 @@ async function searchYellowPages(niche: string, city: string): Promise<YPBusines
   const results: YPBusiness[] = [];
   const url = `https://www.yellowpages.com/search?search_terms=${encodeURIComponent(niche)}&geo_location_terms=${encodeURIComponent(city)}`;
 
-  console.log(`[YP] Fetching: ${url}`);
-  const html = await fetchHtml(url, 12000);
-
-  if (!html || html.length < 3000) {
-    console.log('[YP] No response');
-    return results;
-  }
-
-  console.log(`[YP] Got ${html.length} bytes`);
+  const html = await fetchHtml(url, 10000);
+  if (!html || html.length < 3000) return results;
 
   try {
-    // Name pattern
     const nameRegex = /class="business-name"[^>]*>\s*<span[^>]*>([^<]{3,80})<\/span>/g;
     const phoneRegex = /class="phones phone primary"[^>]*>([^<]+)<\/a>/g;
     const addrRegex = /class="street-address"[^>]*>([^<]+)<\/span>/g;
@@ -577,7 +480,6 @@ async function searchYellowPages(niche: string, city: string): Promise<YPBusines
     while ((m = phoneRegex.exec(html)) !== null) phones.push(m[1].trim());
     while ((m = addrRegex.exec(html)) !== null) addresses.push(decodeHtml(m[1]).trim());
 
-    // Alternative name pattern
     if (names.length === 0) {
       const altNameRegex = /"name":"([^"]{3,80})","url":"\/[^"]+"/g;
       while ((m = altNameRegex.exec(html)) !== null) {
@@ -599,7 +501,6 @@ async function searchYellowPages(niche: string, city: string): Promise<YPBusines
       });
     }
 
-    console.log(`[YP] Found ${results.length} businesses`);
   } catch (err) {
     console.error('[YP] Parse error:', err);
   }
@@ -639,23 +540,25 @@ export async function POST(request: Request) {
       try {
         console.log(`[LeadFinder] ${niche} in ${city}, ${country}`);
 
-        // ── Run all scrapers in parallel ──────────────
-        const [gmapsResults, gsearchResults, yelpResults, ypResults] = await Promise.allSettled([
-          scrapeGoogleMaps(niche, city, country),
+        // ── Run map & local scrapers in parallel ──────────────
+        const [gLocalResults, osmResults, gsearchResults, yelpResults, ypResults] = await Promise.allSettled([
+          scrapeGoogleLocalPlaces(niche, city, country),
+          scrapeOSMMaps(niche, city, country),
           scrapeGoogleSearch(niche, city, country),
           searchYelp(niche, city),
           searchYellowPages(niche, city),
         ]);
 
-        const gMapsBiz = gmapsResults.status === 'fulfilled' ? gmapsResults.value : [];
+        const gLocalBiz = gLocalResults.status === 'fulfilled' ? gLocalResults.value : [];
+        const osmBiz = osmResults.status === 'fulfilled' ? osmResults.value : [];
         const gSearchBiz = gsearchResults.status === 'fulfilled' ? gsearchResults.value : [];
         const yelpBiz = yelpResults.status === 'fulfilled' ? yelpResults.value : [];
         const ypBiz = ypResults.status === 'fulfilled' ? ypResults.value : [];
 
-        console.log(`[LeadFinder] Sources: GMaps=${gMapsBiz.length} GSearch=${gSearchBiz.length} Yelp=${yelpBiz.length} YP=${ypBiz.length}`);
+        console.log(`[LeadFinder] Sources: GLocal=${gLocalBiz.length} OSM=${osmBiz.length} GSearch=${gSearchBiz.length} Yelp=${yelpBiz.length} YP=${ypBiz.length}`);
 
-        // ── Process Google Maps results ───────────────
-        for (const biz of gMapsBiz) {
+        // ── 1. Process Google Local Maps results ───────────────
+        for (const biz of gLocalBiz) {
           if (totalFound >= maxItems) break;
           if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
           seenNames.add(biz.name.toLowerCase());
@@ -664,7 +567,6 @@ export async function POST(request: Request) {
           let phone = biz.phone;
           let website = biz.website;
 
-          // Scrape website for email
           if (website) {
             const contacts = await scrapeWebsiteForContacts(website);
             email = contacts.email;
@@ -680,7 +582,7 @@ export async function POST(request: Request) {
             address: biz.address || `${city}, ${country}`,
             niche, city, country,
             status: 'new',
-            notes: biz.rating ? `⭐ ${biz.rating} · 📍 Google Maps` : '📍 Google Maps',
+            notes: '📍 Google Maps',
             source: 'Google Maps',
             communicationHistory: [],
             createdAt: Date.now(),
@@ -688,10 +590,46 @@ export async function POST(request: Request) {
 
           totalFound++;
           await writeLead(lead);
-          await new Promise(r => setTimeout(r, 150));
+          await new Promise(r => setTimeout(r, 100));
         }
 
-        // ── Process Google Search results ─────────────
+        // ── 2. Process OpenStreetMap Places results ────────────
+        for (const biz of osmBiz) {
+          if (totalFound >= maxItems) break;
+          if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
+          seenNames.add(biz.name.toLowerCase());
+
+          let email = '';
+          let phone = biz.phone;
+          let website = biz.website;
+
+          if (website) {
+            const contacts = await scrapeWebsiteForContacts(website);
+            email = contacts.email;
+            if (!phone && contacts.phone) phone = contacts.phone;
+          }
+
+          const lead = {
+            id: crypto.randomUUID(),
+            businessName: biz.name,
+            email,
+            phone,
+            website,
+            address: biz.address || `${city}, ${country}`,
+            niche, city, country,
+            status: 'new',
+            notes: '📍 Map Location',
+            source: 'Google Maps',
+            communicationHistory: [],
+            createdAt: Date.now(),
+          };
+
+          totalFound++;
+          await writeLead(lead);
+          await new Promise(r => setTimeout(r, 100));
+        }
+
+        // ── 3. Process Google Search results ─────────────
         for (const biz of gSearchBiz) {
           if (totalFound >= maxItems) break;
           if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
@@ -724,10 +662,10 @@ export async function POST(request: Request) {
 
           totalFound++;
           await writeLead(lead);
-          await new Promise(r => setTimeout(r, 150));
+          await new Promise(r => setTimeout(r, 100));
         }
 
-        // ── Process Yelp results ──────────────────────
+        // ── 4. Process Yelp results ──────────────────────
         for (const biz of yelpBiz) {
           if (totalFound >= maxItems) break;
           if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
@@ -764,10 +702,10 @@ export async function POST(request: Request) {
 
           totalFound++;
           await writeLead(lead);
-          await new Promise(r => setTimeout(r, 150));
+          await new Promise(r => setTimeout(r, 100));
         }
 
-        // ── Process Yellow Pages results ──────────────
+        // ── 5. Process Yellow Pages results ──────────────
         for (const biz of ypBiz) {
           if (totalFound >= maxItems) break;
           if (!biz.name || seenNames.has(biz.name.toLowerCase())) continue;
@@ -800,7 +738,7 @@ export async function POST(request: Request) {
 
           totalFound++;
           await writeLead(lead);
-          await new Promise(r => setTimeout(r, 150));
+          await new Promise(r => setTimeout(r, 100));
         }
 
         // ── Final response ────────────────────────────
@@ -810,7 +748,7 @@ export async function POST(request: Request) {
           ));
         } else {
           await writeError(
-            `No businesses found for "${niche}" in "${city}". Try a different city or niche (e.g. "Dentist" in "New York").`
+            `No businesses found for "${niche}" in "${city}". Try a different city or niche.`
           );
         }
 
