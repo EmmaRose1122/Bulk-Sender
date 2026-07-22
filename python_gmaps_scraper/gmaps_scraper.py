@@ -3,12 +3,13 @@ import json
 import re
 import time
 import urllib.parse
-from bs4 import BeautifulSoup
+
+# Default active Serper API key for instant Google Maps scraping
+SERPER_API_KEY = "48853f5c845df9f552b47f65a2364377131b6e1d"
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
     'Accept-Language': 'en-US,en;q=0.9',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 }
 
 def extract_emails(text):
@@ -28,92 +29,123 @@ def extract_phones(text):
             valid.append(m.strip())
     return valid
 
-def quick_scrape_website_email(url):
-    if not url or not url.startsWith('http') if hasattr(url, 'startsWith') else not url.startswith('http') or 'yelp.com' in url or 'google.com' in url:
-        return ""
-    try:
-        res = requests.get(url, headers=HEADERS, timeout=4)
-        if res.status_code == 200:
-            emails = extract_emails(res.text)
-            if emails:
-                return emails[0]
-    except:
-        pass
-    return ""
-
-def scrape_google_maps_leads(niche, city, country="United States", max_leads=50):
-    print(f"\n[Search] Searching Google Maps for '{niche}' in '{city}, {country}'...")
+def scrape_serper_gmaps(niche, city, country, max_leads, api_key=SERPER_API_KEY):
     results = []
     seen = set()
 
     queries = [
-        f"{niche} in {city} {country}",
-        f"best {niche} in {city}",
-        f"{niche} services {city}",
+        {"q": f"{niche} in {city} {country}", "location": f"{city}, {country}"},
+        {"q": f"best {niche} in {city}", "location": f"{city}, {country}"},
+        {"q": f"{niche} services {city}", "location": f"{city}, {country}"},
     ]
 
-    for query in queries:
+    for item in queries:
         if len(results) >= max_leads:
             break
 
-        url = f"https://www.google.com/search?q={urllib.parse.quote(query)}&tbm=lcl&hl=en"
-        print(f"[*] Querying Google Maps: {query}...")
-
         try:
-            res = requests.get(url, headers=HEADERS, cookies={'CONSENT': 'YES+'}, timeout=10)
-            if res.status_code != 200:
-                continue
+            res = requests.post(
+                "https://google.serper.dev/places",
+                headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
+                json=item,
+                timeout=10
+            )
 
-            html = res.text
-            soup = BeautifulSoup(html, 'html.parser')
+            if res.status_code == 200:
+                data = res.json()
+                places = data.get("places", [])
+                for p in places:
+                    name = p.get("title") or p.get("name")
+                    if not name:
+                        continue
+                    
+                    key = name.lower()
+                    if key in seen:
+                        continue
+                    seen.add(key)
 
-            card_elements = soup.find_all('div', class_=re.compile(r'OSrLfi|dbg0pd|rllt__details'))
-            names = []
-            for elem in card_elements:
-                name = elem.get_text().strip()
-                if name and len(name) > 2 and 'google' not in name.lower() and 'map' not in name.lower() and name not in names:
-                    names.append(name)
+                    phone = p.get("phoneNumber") or p.get("phone") or ""
+                    website = p.get("website") or ""
+                    address = p.get("address") or f"{city}, {country}"
+                    rating = p.get("rating")
+                    rating_str = f"⭐ {rating} ({p.get('ratingCount', 0)})" if rating else "⭐ Google Maps"
 
-            all_phones = extract_phones(html)
-            website_matches = re.findall(r'href="(https?:\/\/(?!(?:google|gstatic|youtube|facebook)[^"]*)[^"]{5,100})"', html)
-            websites = list(set(website_matches))
+                    print(f"   [+] Found: {name} | Phone: {phone or 'N/A'} | Address: {address}")
 
-            for i, name in enumerate(names):
-                if len(results) >= max_leads:
-                    break
-                
-                key = name.lower()
-                if key in seen:
-                    continue
-                seen.add(key)
+                    results.append({
+                        "businessName": name,
+                        "phone": phone,
+                        "email": "",
+                        "website": website,
+                        "address": address,
+                        "niche": niche,
+                        "city": city,
+                        "country": country,
+                        "status": "new",
+                        "notes": f"{rating_str} · Python Google Maps",
+                        "source": "Python Google Maps Scraper",
+                    })
 
-                phone = all_phones[i] if i < len(all_phones) else ""
-                website = websites[i] if i < len(websites) else ""
-
-                print(f"   [+] Found: {name} | Phone: {phone or 'N/A'} | Web: {website or 'N/A'}")
-
-                email = ""
-                if website:
-                    email = quick_scrape_website_email(website)
-
-                results.append({
-                    "businessName": name,
-                    "phone": phone,
-                    "email": email,
-                    "website": website,
-                    "address": f"{city}, {country}",
-                    "niche": niche,
-                    "city": city,
-                    "country": country,
-                    "status": "new",
-                    "notes": "Google Maps Python Scraper",
-                    "source": "Python Google Maps Scraper",
-                })
-
-                time.sleep(0.05)
+                    if len(results) >= max_leads:
+                        break
 
         except Exception as e:
-            print(f"[-] Scraping error for query '{query}': {e}")
+            print(f"[-] Serper API query error: {e}")
 
-    print(f"\n[+] Scraping finished! Collected {len(results)} total Google Maps leads.")
+    return results
+
+def scrape_duckduckgo_fallback(niche, city, country, max_leads):
+    results = []
+    seen = set()
+    query = f"{niche} in {city} {country} phone contact"
+    url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+
+    try:
+        res = requests.get(url, headers=HEADERS, timeout=8)
+        if res.status_code == 200:
+            link_matches = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>', res.text)
+            for raw_url, name in link_matches:
+                if len(results) >= max_leads:
+                    break
+                name = name.strip()
+                uddg = re.search(r'uddg=([^&]+)', raw_url)
+                site_url = urllib.parse.unquote(uddg.group(1)) if uddg else raw_url
+
+                if site_url.startswith('http') and 'duckduckgo.com' not in site_url and 'wikipedia.org' not in site_url:
+                    key = name.lower()
+                    if key not in seen:
+                        seen.add(key)
+                        results.append({
+                            "businessName": name,
+                            "phone": "",
+                            "email": "",
+                            "website": site_url,
+                            "address": f"{city}, {country}",
+                            "niche": niche,
+                            "city": city,
+                            "country": country,
+                            "status": "new",
+                            "notes": "DuckDuckGo Scraper",
+                            "source": "Python DuckDuckGo",
+                        })
+    except Exception as e:
+        print(f"[-] DDG fallback error: {e}")
+
+    return results
+
+def scrape_google_maps_leads(niche, city, country="United States", max_leads=50):
+    print(f"\n[Search] Scraping Google Maps for '{niche}' in '{city}, {country}'...")
+    
+    # 1. Primary: Serper.dev Google Maps Engine
+    results = scrape_serper_gmaps(niche, city, country, max_leads)
+
+    # 2. Fallback if needed
+    if len(results) < max_leads:
+        remains = max_leads - len(results)
+        fallback = scrape_duckduckgo_fallback(niche, city, country, remains)
+        for f in fallback:
+            if not any(r["businessName"].lower() == f["businessName"].lower() for r in results):
+                results.append(f)
+
+    print(f"\n[+] Scraping finished! Collected {len(results)} total leads.")
     return results
