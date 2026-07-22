@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 // ─────────────────────────────────────────────
-// Fast High-Yield Multi-Source Lead Scraper
-// Streaming 30-100+ business leads in seconds
+// High-Yield Multi-Source Lead Scraper
+// Supports Serper.dev / Google Places API Key & Free Scrapers
 // ─────────────────────────────────────────────
 
 export const maxDuration = 60; // Vercel Pro: 60s, Hobby: 10s
@@ -12,6 +12,7 @@ interface FindRequest {
   city: string;
   country: string;
   maxResults: number;
+  apiKey?: string; // Serper.dev or Google Places API Key
 }
 
 const USER_AGENTS = [
@@ -96,7 +97,6 @@ async function fetchHtml(url: string, timeoutMs = 6000, extraHeaders: Record<str
   }
 }
 
-// Fast 1.5s non-blocking website email scraper
 async function quickScrapeWebsite(url: string): Promise<{ email: string; phone: string }> {
   let email = '';
   let phone = '';
@@ -129,15 +129,74 @@ interface BusinessItem {
 }
 
 // ════════════════════════════════════════════════════
-// 1. OPENSTREETMAP MAPS SCRAPER (Unlimited, Instant)
+// SERPER.DEV & GOOGLE PLACES API SCRAPER (Official Key)
+// ════════════════════════════════════════════════════
+async function scrapeSerperGooglePlaces(niche: string, city: string, country: string, apiKey: string): Promise<BusinessItem[]> {
+  const results: BusinessItem[] = [];
+  try {
+    // Check if it's Serper.dev or official Google Cloud key
+    const query = `${niche} in ${city} ${country}`;
+
+    // 1. Try Serper.dev API
+    const serperRes = await fetch('https://google.serper.dev/places', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q: query, num: 30 }),
+    });
+
+    if (serperRes.ok) {
+      const data = await serperRes.json();
+      if (Array.isArray(data.places)) {
+        for (const p of data.places) {
+          results.push({
+            name: p.title || p.name,
+            phone: p.phoneNumber || p.phone || '',
+            address: p.address || `${city}, ${country}`,
+            website: p.website || '',
+            rating: p.rating ? `⭐ ${p.rating}` : '⭐ Google Maps',
+            source: 'Google Maps API',
+          });
+        }
+        console.log(`[SerperAPI] Found ${results.length} Google Maps places`);
+        return results;
+      }
+    }
+
+    // 2. Fallback to Google Cloud Places API
+    const gUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`;
+    const gRes = await fetch(gUrl);
+    if (gRes.ok) {
+      const gData = await gRes.json();
+      if (Array.isArray(gData.results)) {
+        for (const item of gData.results) {
+          results.push({
+            name: item.name,
+            phone: item.formatted_phone_number || '',
+            address: item.formatted_address || `${city}, ${country}`,
+            website: item.website || '',
+            rating: item.rating ? `⭐ ${item.rating}` : '⭐ Google Maps',
+            source: 'Google Maps API',
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[GoogleAPI] Error:', err);
+  }
+
+  return results;
+}
+
+// ════════════════════════════════════════════════════
+// OPENSTREETMAP MAPS SCRAPER (Free, Unlimited)
 // ════════════════════════════════════════════════════
 async function scrapeOSMMaps(niche: string, city: string, country: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
   try {
-    const queries = [
-      `${niche} in ${city} ${country}`,
-      `${niche} ${city}`,
-    ];
+    const queries = [`${niche} in ${city} ${country}`, `${niche} ${city}`];
 
     for (const q of queries) {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&extratags=1&limit=50`;
@@ -179,12 +238,11 @@ async function scrapeOSMMaps(niche: string, city: string, country: string): Prom
     console.error('[OSMMaps] Error:', err);
   }
 
-  console.log(`[OSMMaps] Found ${results.length} map places`);
   return results;
 }
 
 // ════════════════════════════════════════════════════
-// 2. GOOGLE LOCAL MAPS SCRAPER
+// GOOGLE LOCAL MAPS SCRAPER
 // ════════════════════════════════════════════════════
 async function scrapeGoogleLocalPlaces(niche: string, city: string, country: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
@@ -245,12 +303,11 @@ async function scrapeGoogleLocalPlaces(niche: string, city: string, country: str
     }
   }
 
-  console.log(`[GoogleLocal] Extracted ${results.length} businesses`);
   return results;
 }
 
 // ════════════════════════════════════════════════════
-// 3. BING SEARCH SCRAPER (High Yield)
+// BING SEARCH SCRAPER
 // ════════════════════════════════════════════════════
 async function scrapeBingSearch(niche: string, city: string, country: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
@@ -287,12 +344,11 @@ async function scrapeBingSearch(niche: string, city: string, country: string): P
     console.error('[BingSearch] Error:', err);
   }
 
-  console.log(`[BingSearch] Found ${results.length} businesses`);
   return results;
 }
 
 // ════════════════════════════════════════════════════
-// 4. DUCKDUCKGO SCRAPER
+// DUCKDUCKGO SCRAPER
 // ════════════════════════════════════════════════════
 async function scrapeDuckDuckGo(niche: string, city: string, country: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
@@ -334,12 +390,11 @@ async function scrapeDuckDuckGo(niche: string, city: string, country: string): P
     console.error('[DuckDuckGo] Error:', err);
   }
 
-  console.log(`[DuckDuckGo] Found ${results.length} results`);
   return results;
 }
 
 // ════════════════════════════════════════════════════
-// 5. YELP SCRAPER
+// YELP SCRAPER
 // ════════════════════════════════════════════════════
 async function searchYelp(niche: string, city: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
@@ -391,7 +446,7 @@ async function searchYelp(niche: string, city: string): Promise<BusinessItem[]> 
 }
 
 // ════════════════════════════════════════════════════
-// 6. YELLOW PAGES SCRAPER
+// YELLOW PAGES SCRAPER
 // ════════════════════════════════════════════════════
 async function searchYellowPages(niche: string, city: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
@@ -438,7 +493,7 @@ async function searchYellowPages(niche: string, city: string): Promise<BusinessI
 export async function POST(request: Request) {
   try {
     const body: FindRequest = await request.json();
-    const { niche, city, country, maxResults } = body;
+    const { niche, city, country, maxResults, apiKey } = body;
 
     if (!niche || !city) {
       return NextResponse.json({ success: false, message: 'Niche and city are required' }, { status: 400 });
@@ -458,26 +513,34 @@ export async function POST(request: Request) {
       };
 
       try {
-        console.log(`[LeadFinder] Scraping: ${niche} in ${city}, ${country}`);
+        console.log(`[LeadFinder] Scraping: ${niche} in ${city}, ${country} (APIKey: ${apiKey ? 'YES' : 'NO'})`);
 
-        // Run all scrapers in parallel
-        const [osmRes, gLocalRes, bingRes, ddgRes, yelpRes, ypRes] = await Promise.allSettled([
+        const scraperPromises: Promise<BusinessItem[]>[] = [];
+
+        // If user provided a Serper / Google API key, use official Google Places API first!
+        if (apiKey && apiKey.trim().length > 5) {
+          scraperPromises.push(scrapeSerperGooglePlaces(niche, city, country, apiKey.trim()));
+        }
+
+        // Always complement with free map scrapers
+        scraperPromises.push(
           scrapeOSMMaps(niche, city, country),
           scrapeGoogleLocalPlaces(niche, city, country),
           scrapeBingSearch(niche, city, country),
           scrapeDuckDuckGo(niche, city, country),
           searchYelp(niche, city),
-          searchYellowPages(niche, city),
-        ]);
+          searchYellowPages(niche, city)
+        );
 
-        const osm = osmRes.status === 'fulfilled' ? osmRes.value : [];
-        const gLocal = gLocalRes.status === 'fulfilled' ? gLocalRes.value : [];
-        const bing = bingRes.status === 'fulfilled' ? bingRes.value : [];
-        const ddg = ddgRes.status === 'fulfilled' ? ddgRes.value : [];
-        const yelp = yelpRes.status === 'fulfilled' ? yelpRes.value : [];
-        const yp = ypRes.status === 'fulfilled' ? ypRes.value : [];
+        const settled = await Promise.allSettled(scraperPromises);
+        const allItems: BusinessItem[] = [];
 
-        const allItems = [...osm, ...gLocal, ...bing, ...ddg, ...yelp, ...yp];
+        for (const res of settled) {
+          if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+            allItems.push(...res.value);
+          }
+        }
+
         console.log(`[LeadFinder] Combined items count: ${allItems.length}`);
 
         for (const item of allItems) {
@@ -485,7 +548,6 @@ export async function POST(request: Request) {
           if (!item.name || seenNames.has(item.name.toLowerCase())) continue;
           seenNames.add(item.name.toLowerCase());
 
-          // Fast quick website scrape without blocking stream
           let email = '';
           let phone = item.phone;
           const website = item.website;
@@ -512,7 +574,6 @@ export async function POST(request: Request) {
           };
 
           totalFound++;
-          // STREAM IMMEDIATELY to client!
           await writeLead(lead);
           await new Promise(r => setTimeout(r, 20));
         }

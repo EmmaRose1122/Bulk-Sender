@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card } from '../../components/ui/card';
-import { Search, Building2, Mail, Phone, Globe, MapPin, Check, Plus, ExternalLink, Loader2, MessageSquare, Trash2 } from 'lucide-react';
+import { Search, Building2, Mail, Phone, Globe, MapPin, Check, Plus, ExternalLink, Loader2, MessageSquare, Trash2, Key, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Lead } from '../../types/index';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ const COUNTRIES = [
 ];
 
 export default function LeadFinderPage() {
-  const { addLeads, leads } = useAppContext();
+  const { addLeads, leads, googleApiSettings, updateGoogleApiSettings } = useAppContext();
 
   // Persistent search form & persistent scraped results (won't disappear on tab change!)
   const [niche, setNiche] = useLocalStorage<string>('lf_niche', '');
@@ -42,6 +42,8 @@ export default function LeadFinderPage() {
   const [isScraping, setIsScraping] = useState(false);
   const [results, setResults] = useLocalStorage<Lead[]>('lead_finder_live_results', []);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState(googleApiSettings?.placesApiKey || '');
 
   // Sync saved status on load or leads update
   useEffect(() => {
@@ -76,6 +78,7 @@ export default function LeadFinderPage() {
           city,
           country: COUNTRIES.find(c => c.code === country)?.name || country,
           maxResults,
+          apiKey: googleApiSettings?.placesApiKey || '',
         }),
       });
 
@@ -169,6 +172,12 @@ export default function LeadFinderPage() {
     toast.info('Search results cleared');
   };
 
+  const saveApiKey = () => {
+    updateGoogleApiSettings({ ...googleApiSettings, placesApiKey: tempApiKey });
+    setShowApiKeyModal(false);
+    toast.success(tempApiKey ? 'API Key saved successfully!' : 'API Key removed');
+  };
+
   const getWhatsAppLink = (phone: string, businessName: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
     const message = encodeURIComponent(`Hi ${businessName}, I found your details online and wanted to reach out.`);
@@ -183,7 +192,46 @@ export default function LeadFinderPage() {
           <h1 className="text-4xl font-black text-slate-950 tracking-tighter">Live Lead Finder</h1>
           <p className="text-slate-500 font-medium mt-1">Multi-Source Real-time Scraper (Google Maps, Bing, Yelp, OpenStreetMap & YellowPages).</p>
         </div>
+
+        <Button
+          onClick={() => setShowApiKeyModal(!showApiKeyModal)}
+          variant="outline"
+          className="rounded-2xl border-slate-200 text-xs font-bold gap-2 text-slate-700 hover:bg-slate-50"
+        >
+          <Key className="h-4 w-4 text-red-500" />
+          {googleApiSettings?.placesApiKey ? '✅ API Key Active' : '🔑 Add Free API Key'}
+        </Button>
       </header>
+
+      {/* Free API Key Banner / Modal */}
+      {showApiKeyModal && (
+        <Card className="glass border-red-200 bg-red-50/40 p-6 rounded-3xl animate-in fade-in">
+          <div className="flex items-start gap-4">
+            <div className="h-10 w-10 rounded-2xl bg-red-500 text-white flex items-center justify-center shrink-0">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-black text-slate-900 text-base">Free Google Maps API Key (Optional)</h3>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Want 100% official Google Maps results? Get <b>2,500 FREE queries (No credit card needed)</b> from <a href="https://serper.dev" target="_blank" rel="noreferrer" className="text-red-600 font-bold underline">Serper.dev</a> or your Google Cloud Console.
+              </p>
+
+              <div className="flex items-center gap-3 mt-4">
+                <Input
+                  type="password"
+                  value={tempApiKey}
+                  onChange={(e) => setTempApiKey(e.target.value)}
+                  placeholder="Paste Serper.dev or Google Places API Key here..."
+                  className="h-11 rounded-xl bg-white border-slate-200 text-xs text-slate-900 font-medium"
+                />
+                <Button onClick={saveApiKey} className="h-11 px-6 rounded-xl gradient-primary text-white font-bold text-xs shrink-0">
+                  Save Key
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Search Card */}
       <Card className="glass border-none shadow-xl p-8 rounded-3xl">
@@ -317,7 +365,7 @@ export default function LeadFinderPage() {
                         <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider">{lead.niche}</p>
                         {(lead as any).source && (
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                            (lead as any).source === 'Google Maps'
+                            (lead as any).source.includes('Google')
                               ? 'bg-blue-50 text-blue-600'
                               : (lead as any).source === 'Yelp'
                               ? 'bg-red-50 text-red-500'
@@ -325,7 +373,7 @@ export default function LeadFinderPage() {
                               ? 'bg-purple-50 text-purple-600'
                               : 'bg-amber-50 text-amber-600'
                           }`}>
-                            {(lead as any).source === 'Google Maps' ? '📍 GMaps'
+                            {(lead as any).source.includes('Google') ? '📍 GMaps'
                               : (lead as any).source === 'Yelp' ? '⭐ Yelp'
                               : (lead as any).source === 'Bing Search' ? '🔍 Bing'
                               : '📋 YP'}
