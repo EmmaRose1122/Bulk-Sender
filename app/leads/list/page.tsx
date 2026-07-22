@@ -134,90 +134,100 @@ export default function LeadsListPage() {
     toast.success('Notes saved');
   };
 
+const toBold = (str: string) => {
+  if (!str) return '';
+  const normal = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bold   = ['𝗔','𝗕','𝗖','𝗗','𝗘','𝗙','𝗚','𝗛','𝗜','𝗝','𝗞','𝗟','𝗠','𝗡','𝗢','𝗣','𝗤','𝗥','𝗦','𝗧','𝗨','𝗩','𝗪','𝗫','𝗬','𝗭','𝗮','𝗯','𝗰','𝗱','𝗲','𝗳','𝗴','𝗵','𝗶','𝗷','𝗸','𝗹','𝗺','𝗻','𝗼','𝗽','𝗾','𝗿','𝘀','𝘁','𝘂','𝘃','𝘄','𝘅','𝘆','𝘇','𝟬','𝟭','𝟮','𝟯','𝟰','𝟱','𝟲','𝟳','𝟴','𝟵'];
+  return str.split('').map(c => {
+    const idx = normal.indexOf(c);
+    return idx > -1 ? bold[idx] : c;
+  }).join('');
+};
+
 const stripHtmlTags = (str: string) => str ? str.replace(/<[^>]*>/g, '') : '';
 
 const DOT_SKILLS_TEMPLATES = [
   {
     id: 'web_dev',
     name: '🌐 Web Development & Modernization',
-    getSubject: (lead: Lead) => `Quick website proposal for ${lead.businessName}`,
-    getBody: (lead: Lead) => `Hi team at ${lead.businessName},
+    getSubject: (lead: Lead) => `Quick website proposal for ${toBold(lead.businessName)}`,
+    getBody: (lead: Lead) => `Hi team at ${toBold(lead.businessName)},
 
-I noticed ${lead.businessName} while reviewing ${lead.niche} businesses in ${lead.city || 'your area'}. You have a great business, but your online presence could be generating 3x more customer leads.
+I noticed ${toBold(lead.businessName)} while reviewing ${lead.niche} businesses in ${lead.city || 'your area'}. You have a great business, but your online presence could be generating 3x more customer leads.
 
-At Dot Skills, we specialize in high-converting agency services:
+At ${toBold('Dot Skills')}, we specialize in high-converting agency services:
 • Web Development: Modern, fast-loading, mobile-friendly websites that convert visitors into paying customers.
 • SEO: Rank at the top of Google search results.
 • Local SEO: Dominate Google Maps 3-Pack rankings for local clients.
 • Social Media Marketing: Engage target customers and build brand authority.
 
-Would you be open to a quick 10-minute call this week to see how Dot Skills can help ${lead.businessName} grow?
+Would you be open to a quick 10-minute call this week to see how ${toBold('Dot Skills')} can help ${toBold(lead.businessName)} grow?
 
 Best regards,
-Dot Skills Team
+${toBold('Dot Skills Team')}
 Web Development | SEO | Local SEO | Social Media Marketing`
   },
   {
     id: 'local_seo',
     name: '📍 Local SEO & Google Maps Ranking',
-    getSubject: (lead: Lead) => `Google Maps ranking idea for ${lead.businessName}`,
-    getBody: (lead: Lead) => `Hi team at ${lead.businessName},
+    getSubject: (lead: Lead) => `Google Maps ranking idea for ${toBold(lead.businessName)}`,
+    getBody: (lead: Lead) => `Hi team at ${toBold(lead.businessName)},
 
-I came across ${lead.businessName} and noticed a huge opportunity to significantly increase your local customer calls in ${lead.city || 'your city'}.
+I came across ${toBold(lead.businessName)} and noticed a huge opportunity to significantly increase your local customer calls in ${lead.city || 'your city'}.
 
-At Dot Skills, our Local SEO & Google Maps optimization service helps businesses like yours:
+At ${toBold('Dot Skills')}, our Local SEO & Google Maps optimization service helps businesses like yours:
 • Rank in the Google Maps Top 3-Pack for local searches
 • Dominate local keyword search results
 • Convert local search traffic into direct calls & walk-in clients
 
-We also provide complete Web Development, SEO, and Social Media Marketing to scale ${lead.businessName}.
+We also provide complete Web Development, SEO, and Social Media Marketing to scale ${toBold(lead.businessName)}.
 
-We'd love to send a free 5-minute video audit customized for ${lead.businessName}. Would you be interested?
+We'd love to send a free 5-minute video audit customized for ${toBold(lead.businessName)}. Would you be interested?
 
 Best regards,
-Dot Skills Team
+${toBold('Dot Skills Team')}
 Web Development | SEO | Local SEO | Social Media Marketing`
   },
   {
     id: 'smm',
     name: '📱 Social Media Marketing & Growth',
-    getSubject: (lead: Lead) => `Social media strategy for ${lead.businessName}`,
-    getBody: (lead: Lead) => `Hi team at ${lead.businessName},
+    getSubject: (lead: Lead) => `Social media strategy for ${toBold(lead.businessName)}`,
+    getBody: (lead: Lead) => `Hi team at ${toBold(lead.businessName)},
 
-I was checking out ${lead.businessName} and saw great potential to expand your brand reach on social media.
+I was checking out ${toBold(lead.businessName)} and saw great potential to expand your brand reach on social media.
 
-At Dot Skills, our Social Media Marketing team creates high-impact content that attracts and retains customers:
+At ${toBold('Dot Skills')}, our Social Media Marketing team creates high-impact content that attracts and retains customers:
 • Custom visual content creation & branding
 • Targeted ad campaigns for local lead generation
 • Consistent engagement & community management
 
-Together with our Web Development and SEO services, we help ${lead.businessName} dominate your market.
+Together with our Web Development and SEO services, we help ${toBold(lead.businessName)} dominate your market.
 
-Could we schedule a quick 10-minute chat to discuss how Dot Skills can elevate ${lead.businessName}?
+Could we schedule a quick 10-minute chat to discuss how ${toBold('Dot Skills')} can elevate ${toBold(lead.businessName)}?
 
 Best regards,
-Dot Skills Team
+${toBold('Dot Skills Team')}
 Web Development | SEO | Local SEO | Social Media Marketing`
   },
   {
     id: 'full_package',
     name: '🚀 All-in-One Growth Package (Web Dev + SEO + SMM)',
-    getSubject: (lead: Lead) => `Digital growth plan for ${lead.businessName}`,
-    getBody: (lead: Lead) => `Hi team at ${lead.businessName},
+    getSubject: (lead: Lead) => `Digital growth plan for ${toBold(lead.businessName)}`,
+    getBody: (lead: Lead) => `Hi team at ${toBold(lead.businessName)},
 
-I hope this email finds you well! I reached out because ${lead.businessName} has strong growth potential in ${lead.city || 'your market'}.
+I hope this email finds you well! I reached out because ${toBold(lead.businessName)} has strong growth potential in ${lead.city || 'your market'}.
 
-At Dot Skills, we provide full-suite digital solutions tailored for ${lead.niche} businesses:
+At ${toBold('Dot Skills')}, we provide full-suite digital solutions tailored for ${lead.niche} businesses:
 1. Web Development: Modern, high-speed, conversion-focused websites
 2. SEO & Local SEO: Rank #1 on Google & Google Maps 3-Pack
 3. Social Media Marketing: Expand reach & run targeted lead campaigns
 
-We can handle your entire digital presence so you can focus on running ${lead.businessName}.
+We can handle your entire digital presence so you can focus on running ${toBold(lead.businessName)}.
 
 Would you be open to a quick discovery call this week?
 
 Best regards,
-Dot Skills Team
+${toBold('Dot Skills Team')}
 Web Development | SEO | Local SEO | Social Media Marketing`
   }
 ];
