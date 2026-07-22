@@ -10,7 +10,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import {
   X, Mail, Phone, Globe, MapPin, Building2, Search,
   Clock, CheckCircle2, Loader2, Send, StickyNote,
-  AlertCircle, ChevronDown, Trash2, Filter, Upload, Download, Sparkles, MessageCircle, Eye
+  AlertCircle, ChevronDown, Trash2, Filter, Upload, Download, Sparkles, MessageCircle, Eye, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Lead, LeadStatus, CommunicationEntry } from '../../../types/index';
@@ -358,6 +358,26 @@ Best regards,`);
             <p className="text-slate-500 font-medium mt-1">{leads.length} leads in database</p>
           </div>
           <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/leads/push');
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.leads) {
+                      addLeads(data.leads);
+                      toast.success(`Synced ${data.leads.length} leads from database!`);
+                    }
+                  }
+                } catch {
+                  toast.error('Sync failed');
+                }
+              }}
+              className="h-10 rounded-xl border-slate-200 text-rose-600 font-bold text-xs hover:bg-rose-50"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" /> Sync Database
+            </Button>
             <Button variant="outline" onClick={handleExportCSV} className="h-10 rounded-xl border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50">
               <Download className="h-4 w-4 mr-2" /> Export CSV
             </Button>

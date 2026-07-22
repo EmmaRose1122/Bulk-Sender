@@ -3,8 +3,8 @@ import json
 import re
 import time
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 
-# Default active Serper API key for instant Google Maps scraping
 SERPER_API_KEY = "48853f5c845df9f552b47f65a2364377131b6e1d"
 
 HEADERS = {
@@ -13,52 +13,76 @@ HEADERS = {
 }
 
 def extract_emails(text):
+    if not text:
+        return []
     regex = r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}'
     emails = re.findall(regex, text)
-    blacklist = ['example.com', 'w3.org', 'schema.org', 'sentry.io', 'google.com', 'facebook.com', 'yellowpages.com', 'yelp.com', 'bing.com']
+    blacklist = ['example.com', 'w3.org', 'schema.org', 'sentry.io', 'google.com', 'facebook.com', 'yellowpages.com', 'yelp.com', 'bing.com', 'wixpress.com', 'domain.com']
     valid = [e for e in set(emails) if not any(b in e.lower() for b in blacklist) and len(e) < 60]
     return valid
 
-def extract_phones(text):
-    regex = r'(?:\+?[\d]{1,3}[\s.\-]?)?\(?[\d]{2,4}\)?[\s.\-]?[\d]{3,4}[\s.\-]?[\d]{3,4}'
-    matches = re.findall(regex, text)
-    valid = []
-    for m in set(matches):
-        digits = re.sub(r'\D', '', m)
-        if 10 <= len(digits) <= 15:
-            valid.append(m.strip())
-    return valid
+def fetch_email_from_website(url):
+    if not url or not url.startswith('http') or 'yelp.com' in url or 'google.com' in url:
+        return ""
+
+    urls_to_check = [url]
+    base_url = url.rstrip('/')
+    urls_to_check.extend([
+        f"{base_url}/contact",
+        f"{base_url}/contact-us",
+        f"{base_url}/about",
+        f"{base_url}/about-us",
+    ])
+
+    for target in urls_to_check:
+        try:
+            res = requests.get(target, headers=HEADERS, timeout=3.0)
+            if res.status_code == 200:
+                found = extract_emails(res.text)
+                if found:
+                    return found[0]
+        except:
+            pass
+
+    return ""
 
 def scrape_serper_gmaps(niche, city, country, max_leads, api_key=SERPER_API_KEY):
     results = []
     seen = set()
 
-    queries = [
-        {"q": f"{niche} in {city} {country}", "location": f"{city}, {country}"},
-        {"q": f"best {niche} in {city}", "location": f"{city}, {country}"},
-        {"q": f"{niche} services {city}", "location": f"{city}, {country}"},
-    ]
+    max_pages = max(1, (max_leads // 10) + 2)
 
-    for item in queries:
+    for page in range(1, max_pages + 1):
         if len(results) >= max_leads:
             break
+
+        print(f"[*] Fetching Google Maps Page {page}...")
+        payload = {
+            "q": f"{niche} in {city} {country}",
+            "location": f"{city}, {country}",
+            "page": page
+        }
 
         try:
             res = requests.post(
                 "https://google.serper.dev/places",
                 headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
-                json=item,
+                json=payload,
                 timeout=10
             )
 
             if res.status_code == 200:
                 data = res.json()
                 places = data.get("places", [])
+                if not places:
+                    print(f"[*] No more places found on page {page}.")
+                    break
+
                 for p in places:
                     name = p.get("title") or p.get("name")
                     if not name:
                         continue
-                    
+
                     key = name.lower()
                     if key in seen:
                         continue
@@ -68,9 +92,7 @@ def scrape_serper_gmaps(niche, city, country, max_leads, api_key=SERPER_API_KEY)
                     website = p.get("website") or ""
                     address = p.get("address") or f"{city}, {country}"
                     rating = p.get("rating")
-                    rating_str = f"⭐ {rating} ({p.get('ratingCount', 0)})" if rating else "⭐ Google Maps"
-
-                    print(f"   [+] Found: {name} | Phone: {phone or 'N/A'} | Address: {address}")
+                    rating_str = f"Rating {rating} ({p.get('ratingCount', 0)})" if rating else "Google Maps"
 
                     results.append({
                         "businessName": name,
@@ -82,7 +104,7 @@ def scrape_serper_gmaps(niche, city, country, max_leads, api_key=SERPER_API_KEY)
                         "city": city,
                         "country": country,
                         "status": "new",
-                        "notes": f"{rating_str} · Python Google Maps",
+                        "notes": f"{rating_str} · Python Google Maps Page {page}",
                         "source": "Python Google Maps Scraper",
                     })
 
@@ -90,62 +112,36 @@ def scrape_serper_gmaps(niche, city, country, max_leads, api_key=SERPER_API_KEY)
                         break
 
         except Exception as e:
-            print(f"[-] Serper API query error: {e}")
+            print(f"[-] Serper API error page {page}: {e}")
+            break
 
     return results
 
-def scrape_duckduckgo_fallback(niche, city, country, max_leads):
-    results = []
-    seen = set()
-    query = f"{niche} in {city} {country} phone contact"
-    url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+def enrich_emails_in_parallel(leads):
+    print("\n[Email Finder] Deep scanning website contact pages for emails...")
+    
+    def worker(lead):
+        if lead.get("website") and not lead.get("email"):
+            email = fetch_email_from_website(lead["website"])
+            if email:
+                lead["email"] = email
+                print(f"   [+] Email Found: {lead['businessName']} -> {email}")
+        return lead
 
-    try:
-        res = requests.get(url, headers=HEADERS, timeout=8)
-        if res.status_code == 200:
-            link_matches = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>', res.text)
-            for raw_url, name in link_matches:
-                if len(results) >= max_leads:
-                    break
-                name = name.strip()
-                uddg = re.search(r'uddg=([^&]+)', raw_url)
-                site_url = urllib.parse.unquote(uddg.group(1)) if uddg else raw_url
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        leads = list(executor.map(worker, leads))
 
-                if site_url.startswith('http') and 'duckduckgo.com' not in site_url and 'wikipedia.org' not in site_url:
-                    key = name.lower()
-                    if key not in seen:
-                        seen.add(key)
-                        results.append({
-                            "businessName": name,
-                            "phone": "",
-                            "email": "",
-                            "website": site_url,
-                            "address": f"{city}, {country}",
-                            "niche": niche,
-                            "city": city,
-                            "country": country,
-                            "status": "new",
-                            "notes": "DuckDuckGo Scraper",
-                            "source": "Python DuckDuckGo",
-                        })
-    except Exception as e:
-        print(f"[-] DDG fallback error: {e}")
-
-    return results
+    return leads
 
 def scrape_google_maps_leads(niche, city, country="United States", max_leads=50):
-    print(f"\n[Search] Scraping Google Maps for '{niche}' in '{city}, {country}'...")
-    
-    # 1. Primary: Serper.dev Google Maps Engine
+    print(f"\n[Search] Scraping Google Maps for '{niche}' in '{city}, {country}' (Target: {max_leads} leads)...")
+
+    # 1. Multi-Page Google Maps Scraper
     results = scrape_serper_gmaps(niche, city, country, max_leads)
 
-    # 2. Fallback if needed
-    if len(results) < max_leads:
-        remains = max_leads - len(results)
-        fallback = scrape_duckduckgo_fallback(niche, city, country, remains)
-        for f in fallback:
-            if not any(r["businessName"].lower() == f["businessName"].lower() for r in results):
-                results.append(f)
+    # 2. Deep Email Scraper
+    if results:
+        results = enrich_emails_in_parallel(results)
 
-    print(f"\n[+] Scraping finished! Collected {len(results)} total leads.")
+    print(f"\n[+] Scraping complete! Collected {len(results)} total Google Maps leads.")
     return results
