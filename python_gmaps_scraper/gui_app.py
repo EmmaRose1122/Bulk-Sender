@@ -7,13 +7,14 @@ import sys
 
 from gmaps_scraper import scrape_google_maps_leads
 from app_pusher import push_leads_to_bulk_sender
+from geo_presets import COUNTRY_CITIES, NICHES_LIST
 
 class GMapsScraperGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Bulk Sender — Google Maps Lead Scraper & Auto Pusher")
-        self.root.geometry("900" + "x" + "650")
-        self.root.minsize(800, 550)
+        self.root.geometry("960x700")
+        self.root.minsize(850, 600)
 
         # Style configuration
         self.style = ttk.Style()
@@ -39,7 +40,7 @@ class GMapsScraperGUI:
         
         title_lbl = tk.Label(
             header,
-            text="📍 Google Maps Lead Scraper & 1-Click System Pusher",
+            text="[GMaps] Google Maps Lead Scraper & 1-Click System Pusher",
             font=("Segoe UI", 16, "bold"),
             fg="white",
             bg=self.primary_color,
@@ -65,30 +66,34 @@ class GMapsScraperGUI:
         )
         card.pack(fill="x", pady=(0, 15))
 
-        # Grid row 1: Inputs
-        tk.Label(card, text="Niche / Industry:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=0, column=0, sticky="w", padx=5, pady=5)
-        self.niche_entry = ttk.Combobox(card, values=["Plumber", "Dentist", "Restaurant", "Beauty Salon", "Real Estate Agent", "Gym / Fitness", "Lawyer", "Accountant"], width=18, font=("Segoe UI", 10))
-        self.niche_entry.set("Plumber")
-        self.niche_entry.grid(row=0, column=1, padx=5, pady=5)
+        # Grid row 1: Country & City
+        tk.Label(card, text="Country:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        country_options = list(COUNTRY_CITIES.keys())
+        self.country_combo = ttk.Combobox(card, values=country_options, width=18, font=("Segoe UI", 10), state="readonly")
+        self.country_combo.set("United States")
+        self.country_combo.grid(row=0, column=1, padx=5, pady=5)
+        self.country_combo.bind("<<ComboboxSelected>>", self.on_country_change)
 
         tk.Label(card, text="City:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=0, column=2, sticky="w", padx=5, pady=5)
-        self.city_entry = ttk.Entry(card, width=18, font=("Segoe UI", 10))
-        self.city_entry.insert(0, "New York")
-        self.city_entry.grid(row=0, column=3, padx=5, pady=5)
+        self.city_combo = ttk.Combobox(card, width=22, font=("Segoe UI", 10))
+        self.city_combo.grid(row=0, column=3, padx=5, pady=5)
 
-        tk.Label(card, text="Country:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=0, column=4, sticky="w", padx=5, pady=5)
-        self.country_entry = ttk.Entry(card, width=16, font=("Segoe UI", 10))
-        self.country_entry.insert(0, "United States")
-        self.country_entry.grid(row=0, column=5, padx=5, pady=5)
+        tk.Label(card, text="Niche / Industry:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=0, column=4, sticky="w", padx=5, pady=5)
+        self.niche_combo = ttk.Combobox(card, values=NICHES_LIST, width=22, font=("Segoe UI", 10))
+        self.niche_combo.set("Plumber")
+        self.niche_combo.grid(row=0, column=5, padx=5, pady=5)
+
+        # Populate initial cities for United States
+        self.update_city_dropdown("United States")
 
         # Grid row 2: Max Results & App Domain
-        tk.Label(card, text="Max Leads:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        self.max_combo = ttk.Combobox(card, values=[20, 50, 100, 200], width=18, font=("Segoe UI", 10), state="readonly")
+        tk.Label(card, text="Max Leads / City:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        self.max_combo = ttk.Combobox(card, values=[10, 20, 50, 100, 200], width=18, font=("Segoe UI", 10), state="readonly")
         self.max_combo.set(50)
         self.max_combo.grid(row=1, column=1, padx=5, pady=5)
 
-        tk.Label(card, text="App URL:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=1, column=2, sticky="w", padx=5, pady=5)
-        self.app_url_entry = ttk.Entry(card, width=42, font=("Segoe UI", 10))
+        tk.Label(card, text="App Web URL:", font=("Segoe UI", 9, "bold"), bg=self.card_bg, fg=self.text_sub).grid(row=1, column=2, sticky="w", padx=5, pady=5)
+        self.app_url_entry = ttk.Entry(card, width=48, font=("Segoe UI", 10))
         self.app_url_entry.insert(0, "https://lead-finder-bulk-sender.vercel.app")
         self.app_url_entry.grid(row=1, column=3, columnspan=3, sticky="we", padx=5, pady=5)
 
@@ -98,7 +103,7 @@ class GMapsScraperGUI:
 
         self.scrape_btn = tk.Button(
             btn_frame,
-            text="🔍  Start Scraping",
+            text="[Search]  Start Scraping",
             font=("Segoe UI", 10, "bold"),
             bg=self.primary_color,
             fg="white",
@@ -114,7 +119,7 @@ class GMapsScraperGUI:
 
         self.push_btn = tk.Button(
             btn_frame,
-            text="🚀  Push All to Bulk Sender App",
+            text="[Push]  Push All to Bulk Sender App",
             font=("Segoe UI", 10, "bold"),
             bg="#10b981", # Emerald green
             fg="white",
@@ -131,7 +136,7 @@ class GMapsScraperGUI:
 
         self.export_btn = tk.Button(
             btn_frame,
-            text="💾 Export JSON",
+            text="[Save] Export JSON",
             font=("Segoe UI", 9, "bold"),
             bg="#64748b",
             fg="white",
@@ -145,25 +150,27 @@ class GMapsScraperGUI:
         self.export_btn.pack(side="right", padx=5)
 
         # Status Label
-        self.status_lbl = tk.Label(main_container, text="Ready. Enter search criteria and click 'Start Scraping'.", font=("Segoe UI", 9, "italic"), bg=self.bg_color, fg=self.text_sub, anchor="w")
+        self.status_lbl = tk.Label(main_container, text="Ready. Select Country & City and click 'Start Scraping'.", font=("Segoe UI", 9, "italic"), bg=self.bg_color, fg=self.text_sub, anchor="w")
         self.status_lbl.pack(fill="x", pady=(0, 5))
 
         # Data Table Frame
         table_frame = tk.Frame(main_container, bg=self.card_bg, bd=1, relief="solid")
         table_frame.pack(fill="both", expand=True)
 
-        columns = ("name", "phone", "website", "address")
+        columns = ("name", "phone", "email", "website", "address")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", selectmode="browse")
 
         self.tree.heading("name", text="Business Name")
         self.tree.heading("phone", text="Phone Number")
+        self.tree.heading("email", text="Email Address")
         self.tree.heading("website", text="Website")
         self.tree.heading("address", text="Address")
 
-        self.tree.column("name", width=220)
-        self.tree.column("phone", width=140)
-        self.tree.column("website", width=200)
-        self.tree.column("address", width=240)
+        self.tree.column("name", width=200)
+        self.tree.column("phone", width=130)
+        self.tree.column("email", width=180)
+        self.tree.column("website", width=180)
+        self.tree.column("address", width=220)
 
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
@@ -171,22 +178,31 @@ class GMapsScraperGUI:
         self.tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+    def on_country_change(self, event=None):
+        selected_country = self.country_combo.get()
+        self.update_city_dropdown(selected_country)
+
+    def update_city_dropdown(self, country):
+        cities = COUNTRY_CITIES.get(country, ["New York", "Los Angeles", "Chicago"])
+        values = ["[ALL MAJOR CITIES]"] + cities
+        self.city_combo["values"] = values
+        self.city_combo.set(cities[0] if cities else "")
+
     def start_scrape_thread(self):
-        niche = self.niche_entry.get().strip()
-        city = self.city_entry.get().strip()
-        country = self.country_entry.get().strip()
+        country = self.country_combo.get().strip()
+        city = self.city_combo.get().strip()
+        niche = self.niche_combo.get().strip()
         max_leads = int(self.max_combo.get())
 
-        if not niche or not city:
-          messagebox.showerror("Error", "Please enter Niche and City.")
+        if not niche or not country:
+          messagebox.showerror("Error", "Please select a Country and Niche.")
           return
 
         self.scrape_btn.config(state="disabled")
         self.push_btn.config(state="disabled")
         self.export_btn.config(state="disabled")
-        self.status_lbl.config(text=f"Searching Google Maps for '{niche}' in '{city}'... Please wait.")
+        self.status_lbl.config(text=f"Searching Google Maps for '{niche}' in '{city}, {country}'... Please wait.")
         
-        # Clear tree
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -194,10 +210,22 @@ class GMapsScraperGUI:
 
     def run_scrape(self, niche, city, country, max_leads):
         try:
-            leads = scrape_google_maps_leads(niche, city, country, max_leads)
-            self.scraped_leads = leads
+            all_collected = []
+            
+            if city == "[ALL MAJOR CITIES]":
+                city_list = COUNTRY_CITIES.get(country, [])
+                for idx, c_name in enumerate(city_list):
+                    self.root.after(0, lambda c=c_name, i=idx+1, total=len(city_list): self.status_lbl.config(
+                        text=f"Scraping City {i}/{total}: '{c}, {country}' for '{niche}'..."
+                    ))
+                    res = scrape_google_maps_leads(niche, c_name, country, min(20, max_leads))
+                    all_collected.extend(res)
+            else:
+                all_collected = scrape_google_maps_leads(niche, city, country, max_leads)
 
-            self.root.after(0, self.update_table_after_scrape, leads)
+            self.scraped_leads = all_collected
+            self.root.after(0, self.update_table_after_scrape, all_collected)
+
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Scraping Error", str(e)))
             self.root.after(0, lambda: self.status_lbl.config(text="Scraping failed."))
@@ -208,6 +236,7 @@ class GMapsScraperGUI:
             self.tree.insert("", "end", values=(
                 lead.get("businessName", ""),
                 lead.get("phone", "N/A"),
+                lead.get("email", "") or "Scanning...",
                 lead.get("website", "N/A"),
                 lead.get("address", "")
             ))
@@ -228,7 +257,7 @@ class GMapsScraperGUI:
 
         app_url = self.app_url_entry.get().strip()
         if not app_url:
-            app_url = "http://localhost:3000"
+            app_url = "https://lead-finder-bulk-sender.vercel.app"
 
         self.push_btn.config(state="disabled")
         self.status_lbl.config(text=f"Pushing {len(self.scraped_leads)} leads to web app at '{app_url}'...")
