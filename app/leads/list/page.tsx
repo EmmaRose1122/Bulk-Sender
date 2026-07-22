@@ -134,20 +134,99 @@ export default function LeadsListPage() {
     toast.success('Notes saved');
   };
 
+const DOT_SKILLS_TEMPLATES = [
+  {
+    id: 'web_dev',
+    name: '🌐 Web Development & Modernization',
+    getSubject: (lead: Lead) => `Quick website proposal for ${lead.businessName}`,
+    getBody: (lead: Lead) => `Hi team at <strong>${lead.businessName}</strong>,
+
+I noticed <strong>${lead.businessName}</strong> while reviewing ${lead.niche} businesses in ${lead.city || 'your area'}. You have a great business, but your online presence could be generating 3x more customer leads.
+
+At <strong>Dot Skills</strong>, we specialize in high-converting agency services:
+• 🌐 <strong>Web Development:</strong> Modern, fast-loading, mobile-friendly websites that convert visitors into paying customers.
+• 🚀 <strong>SEO:</strong> Rank at the top of Google search results.
+• 📍 <strong>Local SEO:</strong> Dominate Google Maps 3-Pack rankings for local clients.
+• 📱 <strong>Social Media Marketing:</strong> Engage target customers and build brand authority.
+
+Would you be open to a quick 10-minute call this week to see how <strong>Dot Skills</strong> can help <strong>${lead.businessName}</strong> grow?
+
+Best regards,
+<strong>Dot Skills Team</strong>
+Web Development | SEO | Local SEO | Social Media Marketing`
+  },
+  {
+    id: 'local_seo',
+    name: '📍 Local SEO & Google Maps Ranking',
+    getSubject: (lead: Lead) => `Google Maps ranking idea for ${lead.businessName}`,
+    getBody: (lead: Lead) => `Hi team at <strong>${lead.businessName}</strong>,
+
+I came across <strong>${lead.businessName}</strong> and noticed a huge opportunity to significantly increase your local customer calls in ${lead.city || 'your city'}.
+
+At <strong>Dot Skills</strong>, our Local SEO & Google Maps optimization service helps businesses like yours:
+• Rank in the Google Maps Top 3-Pack for local searches
+• Dominate local keyword search results
+• Convert local search traffic into direct calls & walk-in clients
+
+We also provide complete Web Development, SEO, and Social Media Marketing to scale <strong>${lead.businessName}</strong>.
+
+We'd love to send a free 5-minute video audit customized for <strong>${lead.businessName}</strong>. Would you be interested?
+
+Best regards,
+<strong>Dot Skills Team</strong>
+Web Development | SEO | Local SEO | Social Media Marketing`
+  },
+  {
+    id: 'smm',
+    name: '📱 Social Media Marketing & Growth',
+    getSubject: (lead: Lead) => `Social media strategy for ${lead.businessName}`,
+    getBody: (lead: Lead) => `Hi team at <strong>${lead.businessName}</strong>,
+
+I was checking out <strong>${lead.businessName}</strong> and saw great potential to expand your brand reach on social media.
+
+At <strong>Dot Skills</strong>, our Social Media Marketing team creates high-impact content that attracts and retains customers:
+• Custom visual content creation & branding
+• Targeted ad campaigns for local lead generation
+• Consistent engagement & community management
+
+Together with our Web Development and SEO services, we help <strong>${lead.businessName}</strong> dominate your market.
+
+Could we schedule a quick 10-minute chat to discuss how <strong>Dot Skills</strong> can elevate <strong>${lead.businessName}</strong>?
+
+Best regards,
+<strong>Dot Skills Team</strong>
+Web Development | SEO | Local SEO | Social Media Marketing`
+  },
+  {
+    id: 'full_package',
+    name: '🚀 All-in-One Growth Package (Web Dev + SEO + SMM)',
+    getSubject: (lead: Lead) => `Digital growth plan for ${lead.businessName}`,
+    getBody: (lead: Lead) => `Hi team at <strong>${lead.businessName}</strong>,
+
+I hope this email finds you well! I reached out because <strong>${lead.businessName}</strong> has strong growth potential in ${lead.city || 'your market'}.
+
+At <strong>Dot Skills</strong>, we provide full-suite digital solutions tailored for ${lead.niche} businesses:
+1. 🌐 <strong>Web Development:</strong> Modern, high-speed, conversion-focused websites
+2. 🚀 <strong>SEO & Local SEO:</strong> Rank #1 on Google & Google Maps 3-Pack
+3. 📱 <strong>Social Media Marketing:</strong> Expand reach & run targeted lead campaigns
+
+We can handle your entire digital presence so you can focus on running <strong>${lead.businessName}</strong>.
+
+Would you be open to a quick discovery call this week?
+
+Best regards,
+<strong>Dot Skills Team</strong>
+Web Development | SEO | Local SEO | Social Media Marketing`
+  }
+];
+
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('web_dev');
+
   const openEmailDialog = (lead: Lead) => {
     setSelectedLead(lead);
-    setEmailSubject(`Quick question for ${lead.businessName}`);
-    setEmailBody(`Hi there,
-
-I came across ${lead.businessName} while researching ${lead.niche} businesses in ${lead.city}, and I was impressed by what you've built.
-
-I help businesses like yours design a modern, fast-loading, SEO-optimized website that converts visitors into paying customers.
-
-Would you be open to a quick 10-minute call this week to discuss how I can help ${lead.businessName} grow?
-
-Looking forward to hearing from you.
-
-Best regards,`);
+    const tpl = DOT_SKILLS_TEMPLATES.find(t => t.id === selectedTemplateId) || DOT_SKILLS_TEMPLATES[0];
+    setEmailSubject(tpl.getSubject(lead));
+    setEmailBody(tpl.getBody(lead));
     setIsEmailDialogOpen(true);
   };
 
@@ -750,6 +829,26 @@ Best regards,`);
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">Select Dot Skills Email Template</label>
+              <select
+                value={selectedTemplateId}
+                onChange={e => {
+                  const tplId = e.target.value;
+                  setSelectedTemplateId(tplId);
+                  if (selectedLead) {
+                    const tpl = DOT_SKILLS_TEMPLATES.find(t => t.id === tplId) || DOT_SKILLS_TEMPLATES[0];
+                    setEmailSubject(tpl.getSubject(selectedLead));
+                    setEmailBody(tpl.getBody(selectedLead));
+                  }
+                }}
+                className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+              >
+                {DOT_SKILLS_TEMPLATES.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">To</label>
               <Input value={selectedLead?.email || ''} disabled className="bg-slate-50 border-slate-200 text-slate-600 h-11 rounded-xl shadow-none" />

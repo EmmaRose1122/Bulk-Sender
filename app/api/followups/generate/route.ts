@@ -8,50 +8,37 @@ interface GenerateRequest {
   geminiApiKey?: string;
 }
 
-// Smart template-based follow-up generation (works without API key)
+// Smart template-based follow-up generation for Dot Skills
 function generateTemplateFollowUp(lead: Lead, senderName: string): { subject: string; body: string } {
-  const serviceAreas = {
-    'beauty salon': 'online booking system and website',
-    'restaurant': 'online ordering system and digital presence',
-    'plumber': 'lead generation website and local SEO',
-    'dentist': 'patient booking system and online presence',
-    'real estate': 'property listing platform and CRM',
-    'gym': 'member management system and fitness app',
-    'lawyer': 'client intake system and legal website',
-    'accountant': 'client portal and business website',
-    'photographer': 'portfolio website and online booking',
-    'cleaning service': 'booking system and local SEO',
-  };
-
-  const service = serviceAreas[lead.niche.toLowerCase() as keyof typeof serviceAreas] || 'digital presence and website';
+  const companyName = senderName && senderName !== 'Your Team' ? senderName : 'Dot Skills';
+  const businessBold = `<strong>${lead.businessName}</strong>`;
 
   const subjects = [
-    `Quick follow-up: ${lead.businessName}'s online growth`,
-    `Following up — ${lead.businessName}`,
-    `${lead.businessName} — One quick question`,
+    `Quick follow-up: Growth strategy for ${lead.businessName}`,
+    `Following up — ${lead.businessName} x Dot Skills`,
+    `${lead.businessName} — Quick question about your online reach`,
   ];
 
   const subject = subjects[Math.floor(Math.random() * subjects.length)];
 
   const body = `<p>Hi there,</p>
 
-<p>I reached out recently about helping <strong>${lead.businessName}</strong> with your ${service}. I know you're busy running your ${lead.niche} business${lead.city ? ` in ${lead.city}` : ''}, so I wanted to follow up briefly.</p>
+<p>I reached out recently regarding potential digital growth opportunities for ${businessBold}${lead.city ? ` in ${lead.city}` : ''}. At <strong>${companyName}</strong>, we specialize in helping local businesses scale through high-converting <strong>Web Development, SEO, Local SEO, and Social Media Marketing</strong>.</p>
 
-<p>Many ${lead.niche} businesses I've worked with were able to:</p>
+<p>Here is what we recently helped similar ${lead.niche} businesses achieve:</p>
 <ul>
-  <li>Increase online bookings by 40%+</li>
-  <li>Save hours every week on manual tasks</li>
-  <li>Attract more local customers through Google</li>
+  <li><strong>Google Maps 3-Pack Ranking:</strong> Driving 3x more local calls and walk-in leads.</li>
+  <li><strong>Modern High-Speed Website:</strong> Converting visitors into paying clients with high conversion design.</li>
+  <li><strong>Social Media Marketing:</strong> Building brand authority and consistent customer engagement.</li>
 </ul>
 
-<p>I'd love to show you what I put together specifically for ${lead.businessName}. It would only take 15 minutes of your time.</p>
-
-<p>Would this week work for a quick call?</p>
+<p>I'd love to share a free 5-minute video audit customized for ${businessBold}. Would you be open to a quick 10-minute call this week?</p>
 
 <p>Best regards,<br>
-<strong>${senderName}</strong></p>
+<strong>${companyName} Team</strong><br>
+<span style="color: #ef4444; font-weight: bold;">Web Development · SEO · Local SEO · Social Media Marketing</span></p>
 
-<p style="color: #6b7280; font-size: 12px; margin-top: 24px;">
+<p style="color: #9ca3af; font-size: 11px; margin-top: 24px;">
   If you're not interested, just reply "No thanks" and I won't reach out again.
 </p>`;
 
@@ -60,22 +47,23 @@ function generateTemplateFollowUp(lead: Lead, senderName: string): { subject: st
 
 // Gemini AI-powered follow-up generation with model failovers
 async function generateAiFollowUp(lead: Lead, senderName: string, geminiApiKey: string): Promise<{ subject: string; body: string }> {
+  const companyName = senderName && senderName !== 'Your Team' ? senderName : 'Dot Skills';
+
   const prompt = `Write a professional, warm, and concise follow-up email for a business outreach.
 
-Business: ${lead.businessName}
+Target Business: ${lead.businessName}
 Industry: ${lead.niche}
 Location: ${lead.city}, ${lead.country}
-Sender: ${senderName}
-Context: We reached out previously about helping them with their digital presence/website but got no reply.
+Sender Company: ${companyName} (Services: Web Development, SEO, Local SEO, Social Media Marketing)
 
 Requirements:
-- Subject line: compelling, personalized, under 60 chars
-- Body: 3-4 short paragraphs, HTML format
-- Tone: professional but friendly, not pushy
-- Include a clear CTA (15-min call)
-- End with an easy opt-out line
+- Always wrap the target business name in <strong>${lead.businessName}</strong> HTML bold tags.
+- Mention Dot Skills agency and services (Web Development, SEO, Local SEO, Social Media Marketing).
+- Subject line: compelling, personalized, under 60 chars.
+- Body: 3 short paragraphs in HTML format with bullet points.
+- Include a clear CTA (10-min call or free video audit).
 
-Return JSON: {"subject": "...", "body": "...html..."}`;
+Return JSON format: {"subject": "...", "body": "...html..."}`;
 
   const models = [
     'gemini-2.5-flash',
@@ -109,14 +97,13 @@ Return JSON: {"subject": "...", "body": "...html..."}`;
     } catch { }
   }
 
-  // Fallback to smart template if AI models fail or key is invalid
   return generateTemplateFollowUp(lead, senderName);
 }
 
 export async function POST(request: Request) {
   try {
     const body: GenerateRequest = await request.json();
-    const { leads, senderName = 'Your Name', geminiApiKey } = body;
+    const { leads, senderName = 'Dot Skills', geminiApiKey } = body;
 
     if (!leads || leads.length === 0) {
       return NextResponse.json({ success: true, followUps: [] });
