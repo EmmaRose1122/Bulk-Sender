@@ -21,26 +21,20 @@ function generateTemplateFollowUp(lead: Lead, senderName: string): { subject: st
 
   const subject = subjects[Math.floor(Math.random() * subjects.length)];
 
-  const body = `<p>Hi there,</p>
+  const body = `Hi team at ${lead.businessName},
 
-<p>I reached out recently regarding potential digital growth opportunities for ${businessBold}${lead.city ? ` in ${lead.city}` : ''}. At <strong>${companyName}</strong>, we specialize in helping local businesses scale through high-converting <strong>Web Development, SEO, Local SEO, and Social Media Marketing</strong>.</p>
+I reached out recently regarding potential digital growth opportunities for ${lead.businessName}${lead.city ? ` in ${lead.city}` : ''}. At ${companyName}, we specialize in helping local businesses scale through high-converting Web Development, SEO, Local SEO, and Social Media Marketing.
 
-<p>Here is what we recently helped similar ${lead.niche} businesses achieve:</p>
-<ul>
-  <li><strong>Google Maps 3-Pack Ranking:</strong> Driving 3x more local calls and walk-in leads.</li>
-  <li><strong>Modern High-Speed Website:</strong> Converting visitors into paying clients with high conversion design.</li>
-  <li><strong>Social Media Marketing:</strong> Building brand authority and consistent customer engagement.</li>
-</ul>
+Here is what we recently helped similar ${lead.niche} businesses achieve:
+• Google Maps 3-Pack Ranking: Driving 3x more local calls and walk-in leads.
+• Modern High-Speed Website: Converting visitors into paying clients with high conversion design.
+• Social Media Marketing: Building brand authority and consistent customer engagement.
 
-<p>I'd love to share a free 5-minute video audit customized for ${businessBold}. Would you be open to a quick 10-minute call this week?</p>
+I'd love to share a free 5-minute video audit customized for ${lead.businessName}. Would you be open to a quick 10-minute call this week?
 
-<p>Best regards,<br>
-<strong>${companyName} Team</strong><br>
-<span style="color: #ef4444; font-weight: bold;">Web Development · SEO · Local SEO · Social Media Marketing</span></p>
-
-<p style="color: #9ca3af; font-size: 11px; margin-top: 24px;">
-  If you're not interested, just reply "No thanks" and I won't reach out again.
-</p>`;
+Best regards,
+${companyName} Team
+Web Development · SEO · Local SEO · Social Media Marketing`;
 
   return { subject, body };
 }

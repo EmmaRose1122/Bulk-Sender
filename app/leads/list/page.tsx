@@ -134,88 +134,90 @@ export default function LeadsListPage() {
     toast.success('Notes saved');
   };
 
+const stripHtmlTags = (str: string) => str ? str.replace(/<[^>]*>/g, '') : '';
+
 const DOT_SKILLS_TEMPLATES = [
   {
     id: 'web_dev',
     name: '🌐 Web Development & Modernization',
     getSubject: (lead: Lead) => `Quick website proposal for ${lead.businessName}`,
-    getBody: (lead: Lead) => `Hi team at <strong>${lead.businessName}</strong>,
+    getBody: (lead: Lead) => `Hi team at ${lead.businessName},
 
-I noticed <strong>${lead.businessName}</strong> while reviewing ${lead.niche} businesses in ${lead.city || 'your area'}. You have a great business, but your online presence could be generating 3x more customer leads.
+I noticed ${lead.businessName} while reviewing ${lead.niche} businesses in ${lead.city || 'your area'}. You have a great business, but your online presence could be generating 3x more customer leads.
 
-At <strong>Dot Skills</strong>, we specialize in high-converting agency services:
-• 🌐 <strong>Web Development:</strong> Modern, fast-loading, mobile-friendly websites that convert visitors into paying customers.
-• 🚀 <strong>SEO:</strong> Rank at the top of Google search results.
-• 📍 <strong>Local SEO:</strong> Dominate Google Maps 3-Pack rankings for local clients.
-• 📱 <strong>Social Media Marketing:</strong> Engage target customers and build brand authority.
+At Dot Skills, we specialize in high-converting agency services:
+• Web Development: Modern, fast-loading, mobile-friendly websites that convert visitors into paying customers.
+• SEO: Rank at the top of Google search results.
+• Local SEO: Dominate Google Maps 3-Pack rankings for local clients.
+• Social Media Marketing: Engage target customers and build brand authority.
 
-Would you be open to a quick 10-minute call this week to see how <strong>Dot Skills</strong> can help <strong>${lead.businessName}</strong> grow?
+Would you be open to a quick 10-minute call this week to see how Dot Skills can help ${lead.businessName} grow?
 
 Best regards,
-<strong>Dot Skills Team</strong>
+Dot Skills Team
 Web Development | SEO | Local SEO | Social Media Marketing`
   },
   {
     id: 'local_seo',
     name: '📍 Local SEO & Google Maps Ranking',
     getSubject: (lead: Lead) => `Google Maps ranking idea for ${lead.businessName}`,
-    getBody: (lead: Lead) => `Hi team at <strong>${lead.businessName}</strong>,
+    getBody: (lead: Lead) => `Hi team at ${lead.businessName},
 
-I came across <strong>${lead.businessName}</strong> and noticed a huge opportunity to significantly increase your local customer calls in ${lead.city || 'your city'}.
+I came across ${lead.businessName} and noticed a huge opportunity to significantly increase your local customer calls in ${lead.city || 'your city'}.
 
-At <strong>Dot Skills</strong>, our Local SEO & Google Maps optimization service helps businesses like yours:
+At Dot Skills, our Local SEO & Google Maps optimization service helps businesses like yours:
 • Rank in the Google Maps Top 3-Pack for local searches
 • Dominate local keyword search results
 • Convert local search traffic into direct calls & walk-in clients
 
-We also provide complete Web Development, SEO, and Social Media Marketing to scale <strong>${lead.businessName}</strong>.
+We also provide complete Web Development, SEO, and Social Media Marketing to scale ${lead.businessName}.
 
-We'd love to send a free 5-minute video audit customized for <strong>${lead.businessName}</strong>. Would you be interested?
+We'd love to send a free 5-minute video audit customized for ${lead.businessName}. Would you be interested?
 
 Best regards,
-<strong>Dot Skills Team</strong>
+Dot Skills Team
 Web Development | SEO | Local SEO | Social Media Marketing`
   },
   {
     id: 'smm',
     name: '📱 Social Media Marketing & Growth',
     getSubject: (lead: Lead) => `Social media strategy for ${lead.businessName}`,
-    getBody: (lead: Lead) => `Hi team at <strong>${lead.businessName}</strong>,
+    getBody: (lead: Lead) => `Hi team at ${lead.businessName},
 
-I was checking out <strong>${lead.businessName}</strong> and saw great potential to expand your brand reach on social media.
+I was checking out ${lead.businessName} and saw great potential to expand your brand reach on social media.
 
-At <strong>Dot Skills</strong>, our Social Media Marketing team creates high-impact content that attracts and retains customers:
+At Dot Skills, our Social Media Marketing team creates high-impact content that attracts and retains customers:
 • Custom visual content creation & branding
 • Targeted ad campaigns for local lead generation
 • Consistent engagement & community management
 
-Together with our Web Development and SEO services, we help <strong>${lead.businessName}</strong> dominate your market.
+Together with our Web Development and SEO services, we help ${lead.businessName} dominate your market.
 
-Could we schedule a quick 10-minute chat to discuss how <strong>Dot Skills</strong> can elevate <strong>${lead.businessName}</strong>?
+Could we schedule a quick 10-minute chat to discuss how Dot Skills can elevate ${lead.businessName}?
 
 Best regards,
-<strong>Dot Skills Team</strong>
+Dot Skills Team
 Web Development | SEO | Local SEO | Social Media Marketing`
   },
   {
     id: 'full_package',
     name: '🚀 All-in-One Growth Package (Web Dev + SEO + SMM)',
     getSubject: (lead: Lead) => `Digital growth plan for ${lead.businessName}`,
-    getBody: (lead: Lead) => `Hi team at <strong>${lead.businessName}</strong>,
+    getBody: (lead: Lead) => `Hi team at ${lead.businessName},
 
-I hope this email finds you well! I reached out because <strong>${lead.businessName}</strong> has strong growth potential in ${lead.city || 'your market'}.
+I hope this email finds you well! I reached out because ${lead.businessName} has strong growth potential in ${lead.city || 'your market'}.
 
-At <strong>Dot Skills</strong>, we provide full-suite digital solutions tailored for ${lead.niche} businesses:
-1. 🌐 <strong>Web Development:</strong> Modern, high-speed, conversion-focused websites
-2. 🚀 <strong>SEO & Local SEO:</strong> Rank #1 on Google & Google Maps 3-Pack
-3. 📱 <strong>Social Media Marketing:</strong> Expand reach & run targeted lead campaigns
+At Dot Skills, we provide full-suite digital solutions tailored for ${lead.niche} businesses:
+1. Web Development: Modern, high-speed, conversion-focused websites
+2. SEO & Local SEO: Rank #1 on Google & Google Maps 3-Pack
+3. Social Media Marketing: Expand reach & run targeted lead campaigns
 
-We can handle your entire digital presence so you can focus on running <strong>${lead.businessName}</strong>.
+We can handle your entire digital presence so you can focus on running ${lead.businessName}.
 
 Would you be open to a quick discovery call this week?
 
 Best regards,
-<strong>Dot Skills Team</strong>
+Dot Skills Team
 Web Development | SEO | Local SEO | Social Media Marketing`
   }
 ];
@@ -274,8 +276,9 @@ Web Development | SEO | Local SEO | Social Media Marketing`
 
     const smtp = smtpConfigs[0];
     if (!smtp) {
-      // Use Google Account Chooser to ask which Gmail account to use, then redirect to Gmail Compose
-      const targetUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedLead.email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      const cleanSubject = stripHtmlTags(emailSubject);
+      const cleanBody = stripHtmlTags(emailBody);
+      const targetUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedLead.email)}&su=${encodeURIComponent(cleanSubject)}&body=${encodeURIComponent(cleanBody)}`;
       const chooserUrl = `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent(targetUrl)}`;
       window.open(chooserUrl, '_blank');
 
