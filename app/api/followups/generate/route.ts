@@ -10,7 +10,6 @@ interface GenerateRequest {
 
 // Smart template-based follow-up generation (works without API key)
 function generateTemplateFollowUp(lead: Lead, senderName: string): { subject: string; body: string } {
-  const firstName = lead.businessName.split(' ')[0];
   const serviceAreas = {
     'beauty salon': 'online booking system and website',
     'restaurant': 'online ordering system and digital presence',
@@ -25,9 +24,6 @@ function generateTemplateFollowUp(lead: Lead, senderName: string): { subject: st
   };
 
   const service = serviceAreas[lead.niche.toLowerCase() as keyof typeof serviceAreas] || 'digital presence and website';
-  const daysSince = lead.lastContactedAt
-    ? Math.round((Date.now() - lead.lastContactedAt) / (1000 * 60 * 60 * 24))
-    : 3;
 
   const subjects = [
     `Quick follow-up: ${lead.businessName}'s online growth`,
@@ -62,7 +58,7 @@ function generateTemplateFollowUp(lead: Lead, senderName: string): { subject: st
   return { subject, body };
 }
 
-// Gemini AI-powered follow-up generation
+// Gemini AI-powered follow-up generation with model failovers
 async function generateAiFollowUp(lead: Lead, senderName: string, geminiApiKey: string): Promise<{ subject: string; body: string }> {
   const prompt = `Write a professional, warm, and concise follow-up email for a business outreach.
 
@@ -81,35 +77,46 @@ Requirements:
 
 Return JSON: {"subject": "...", "body": "...html..."}`;
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, responseMimeType: 'application/json' }
-        })
+  const models = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+  ];
+
+  for (const model of models) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7, responseMimeType: 'application/json' }
+          })
+        }
+      );
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        const parsed = JSON.parse(text);
+        return { subject: parsed.subject || '', body: parsed.body || '' };
       }
-    );
-
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('No response from Gemini');
-
-    const parsed = JSON.parse(text);
-    return { subject: parsed.subject || '', body: parsed.body || '' };
-  } catch (err) {
-    console.error('Gemini error, falling back to template:', err);
-    return generateTemplateFollowUp(lead, senderName);
+    } catch { }
   }
+
+  // Fallback to smart template if AI models fail or key is invalid
+  return generateTemplateFollowUp(lead, senderName);
 }
 
 export async function POST(request: Request) {
   try {
     const body: GenerateRequest = await request.json();
-    const { leads, senderName = 'Your Name', senderEmail = '', geminiApiKey } = body;
+    const { leads, senderName = 'Your Name', geminiApiKey } = body;
 
     if (!leads || leads.length === 0) {
       return NextResponse.json({ success: true, followUps: [] });
@@ -120,10 +127,9 @@ export async function POST(request: Request) {
     for (const lead of leads) {
       let generated: { subject: string; body: string };
 
-      if (geminiApiKey) {
-        generated = await generateAiFollowUp(lead, senderName, geminiApiKey);
-        // Small delay to avoid rate limiting
-        await new Promise(r => setTimeout(r, 300));
+      if (geminiApiKey && geminiApiKey.trim().length > 5) {
+        generated = await generateAiFollowUp(lead, senderName, geminiApiKey.trim());
+        await new Promise(r => setTimeout(r, 200));
       } else {
         generated = generateTemplateFollowUp(lead, senderName);
       }
