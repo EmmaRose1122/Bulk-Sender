@@ -76,19 +76,6 @@ function decodeHtml(str: string): string {
     .trim();
 }
 
-function decodeBingUrl(url: string): string {
-  try {
-    const uMatch = url.match(/(?:&|&amp;)u=a1([^&]+)/);
-    if (uMatch) {
-      const b64 = uMatch[1].replace(/-/g, '+').replace(/_/g, '/');
-      const pad = b64.length % 4;
-      const paddedB64 = pad ? b64 + '='.repeat(4 - pad) : b64;
-      return Buffer.from(paddedB64, 'base64').toString('utf-8');
-    }
-  } catch { }
-  return url;
-}
-
 async function fetchHtml(url: string, timeoutMs = 6000, extraHeaders: Record<string, string> = {}): Promise<string> {
   try {
     const controller = new AbortController();
@@ -146,89 +133,101 @@ interface BusinessItem {
 }
 
 // ════════════════════════════════════════════════════
-// SERPER.DEV GOOGLE PLACES API SCRAPER
+// SERPER.DEV GOOGLE PLACES API SCRAPER (High Yield)
 // ════════════════════════════════════════════════════
 async function scrapeSerperGooglePlaces(niche: string, city: string, country: string, apiKey: string): Promise<BusinessItem[]> {
   const results: BusinessItem[] = [];
   try {
-    const queryPlaces = `${niche} in ${city} ${country}`;
-    const querySearch = `${niche} ${city} ${country} phone email website`;
+    const loc = `${city}, ${country}`;
+    
+    // Multiple targeted queries for high yield (30-50+ places)
+    const placeQueries = [
+      { q: `${niche} in ${city}`, location: loc },
+      { q: `${niche} services ${city}`, location: loc },
+      { q: `best ${niche} in ${city}`, location: loc },
+    ];
 
-    const placesPromise = fetch('https://google.serper.dev/places', {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ q: queryPlaces, num: 40 }),
-    });
+    const fetchPromises = placeQueries.map(item =>
+      fetch('https://google.serper.dev/places', {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(item),
+      }).then(r => r.ok ? r.json() : null).catch(() => null)
+    );
 
+    // Also query Organic search for direct phone & email snippets
     const searchPromise = fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: {
         'X-API-KEY': apiKey,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ q: querySearch, num: 40 }),
-    });
+      body: JSON.stringify({ q: `${niche} ${city} ${country} contact phone email`, num: 40 }),
+    }).then(r => r.ok ? r.json() : null).catch(() => null);
 
-    const [placesRes, searchRes] = await Promise.allSettled([placesPromise, searchPromise]);
+    const [placesDataList, searchData] = await Promise.all([
+      Promise.all(fetchPromises),
+      searchPromise,
+    ]);
 
-    if (placesRes.status === 'fulfilled' && placesRes.value.ok) {
-      const data = await placesRes.value.json();
-      if (Array.isArray(data.places)) {
+    // Process Google Places results
+    for (const data of placesDataList) {
+      if (data && Array.isArray(data.places)) {
         for (const p of data.places) {
           const name = p.title || p.name;
           if (!name) continue;
 
-          results.push({
-            name,
-            phone: p.phoneNumber || p.phone || '',
-            address: p.address || `${city}, ${country}`,
-            website: p.website || '',
-            rating: p.rating ? `⭐ ${p.rating} (${p.ratingCount || 0})` : '⭐ Google Maps',
-            source: 'Google Maps API',
-          });
-        }
-      }
-    }
-
-    if (searchRes.status === 'fulfilled' && searchRes.value.ok) {
-      const searchData = await searchRes.value.json();
-      if (Array.isArray(searchData.organic)) {
-        for (const item of searchData.organic) {
-          const name = item.title ? item.title.split('-')[0].split('|')[0].trim() : '';
-          const snippet = item.snippet || '';
-          const siteUrl = item.link || '';
-
-          if (
-            name && name.length > 2 && name.length < 80 &&
-            !siteUrl.includes('google.com') && !siteUrl.includes('zocdoc.com') && !siteUrl.includes('yelp.com')
-          ) {
-            const extractedEmails = extractEmails(snippet);
-            const extractedPhones = extractPhones(snippet);
-
-            const existing = results.find(r => r.name.toLowerCase() === name.toLowerCase());
-            if (existing) {
-              if (!existing.email && extractedEmails.length) existing.email = extractedEmails[0];
-              if (!existing.phone && extractedPhones.length) existing.phone = extractedPhones[0];
-              if (!existing.website) existing.website = siteUrl;
-            } else {
-              results.push({
-                name,
-                phone: extractedPhones[0] || '',
-                email: extractedEmails[0] || '',
-                address: `${city}, ${country}`,
-                website: siteUrl,
-                source: 'Google Search API',
-              });
-            }
+          if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+            results.push({
+              name,
+              phone: p.phoneNumber || p.phone || '',
+              address: p.address || `${city}, ${country}`,
+              website: p.website || '',
+              rating: p.rating ? `⭐ ${p.rating} (${p.ratingCount || 0})` : '⭐ Google Maps',
+              source: 'Google Maps API',
+            });
           }
         }
       }
     }
 
-    console.log(`[SerperAPI] Found ${results.length} Google Maps & Search items`);
+    // Process Organic Search Snippets for Emails & Phones
+    if (searchData && Array.isArray(searchData.organic)) {
+      for (const item of searchData.organic) {
+        const name = item.title ? item.title.split('-')[0].split('|')[0].trim() : '';
+        const snippet = item.snippet || '';
+        const siteUrl = item.link || '';
+
+        if (
+          name && name.length > 2 && name.length < 80 &&
+          !siteUrl.includes('google.com') && !siteUrl.includes('zocdoc.com') && !siteUrl.includes('yelp.com')
+        ) {
+          const extractedEmails = extractEmails(snippet);
+          const extractedPhones = extractPhones(snippet);
+
+          const existing = results.find(r => r.name.toLowerCase() === name.toLowerCase());
+          if (existing) {
+            if (!existing.email && extractedEmails.length) existing.email = extractedEmails[0];
+            if (!existing.phone && extractedPhones.length) existing.phone = extractedPhones[0];
+            if (!existing.website) existing.website = siteUrl;
+          } else {
+            results.push({
+              name,
+              phone: extractedPhones[0] || '',
+              email: extractedEmails[0] || '',
+              address: `${city}, ${country}`,
+              website: siteUrl,
+              source: 'Google Search API',
+            });
+          }
+        }
+      }
+    }
+
+    console.log(`[SerperAPI] Total places & organic items collected: ${results.length}`);
     return results;
 
   } catch (err) {
